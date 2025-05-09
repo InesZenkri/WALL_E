@@ -1,0 +1,15 @@
+services:
+  app:
+    image: walle:humble-desktop
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: humble_app
+    environment:
+      - ENV=production
+      - ROS_DOMAIN_ID=0  # Ensure this matches the ROS_DOMAIN_ID on the other PC
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp  # Default DDS implementation
+    network_mode: "host"  # Use host networking for ROS 2 communication
+    volumes:
+      - ${PWD}/app:/usr/src/app
+    command: ["/bin/bash", "-c", "while true; do sleep 30; done"]
