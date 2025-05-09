@@ -1,0 +1,9 @@
+git+https://github.com/openai/whisper.git
+torch
+sounddevice
+numpy
+torch
+torchvision
+torchaudio
+mediapipe
+opencv-python 
