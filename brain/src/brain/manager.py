@@ -15,7 +15,8 @@ class Manager:
         # Create an event queue
         self.event_queue = queue.Queue()
         self.interrupt_queue = queue.Queue()
-        self.job_done_queue = queue.Queue()
+        self.job_done_queue = queue.Queue()ä
+        self.interrupt_state = False
         self.mode = deque(maxlen=20)
         self.mode.append("work_mode")
         self.mode.append("work_mode")
@@ -38,16 +39,15 @@ class Manager:
             try:
                 # Get event from queue with timeout
                 event = self.event_queue.get(timeout=1)
-                if event is None:
+                self.interrupt_state = event == "interrupt"
+                if event is None or self.interrupt_state:
                     event = self.mode[0]
                     logger.debug(f"No event in queue, using default mode: {event}")
-                elif event != "interrupt":
+                else:
                     self.mode.append(event)
                     split_event = event.split(";")
                     logger.debug(f"New event appended to mode queue: {list(self.mode)}")
-                else:
-                    split_event = ["interrupt", self.mode[0]]
-                    logger.debug("Interrupt")
+
                 method = getattr(self, split_event[0])
 
                 # Call the method with parameters if they exist
