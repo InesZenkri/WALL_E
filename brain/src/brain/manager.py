@@ -27,8 +27,8 @@ class Manager:
         self.mode.append("work_mode")
         self.work_state = False
         self.positions = {}
-        self.positions["position_storage"] = {"x": 1, "y": 0}
-        self.positions["position_shelf"] = {"x": 2, "y": 0} 
+        self.positions["position_storage"] = {"x": 9, "y": 0}
+        self.positions["position_shelf"] = {"x": 9, "y": 8} 
         self.positions["position_home"] = {"x": 0, "y": 0}
         self.storage_positions = {}
         self.first = False
@@ -80,6 +80,7 @@ class Manager:
                         if self.mode[-2] == "move":
                             self.send_move()
                     self.mode.pop(-1)
+                    event = self.mode[-1]
                     
                 split_event = event.split(";")
                 method = getattr(self, split_event[0])

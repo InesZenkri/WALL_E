@@ -1,3 +1,4 @@
+from doctest import FAIL_FAST
 import time
 from torchvision import transforms
 from PIL import Image
@@ -598,19 +599,20 @@ class GestureRecognizer:
         equalized_color = cv2.cvtColor(equalized, cv2.COLOR_GRAY2BGR)
         
         # Let YOLO handle the tensor conversion and GPU placement
-        results = self.yolo_model.track(equalized_color, persist=True)
-        
+        results = self.yolo_model(equalized_color)
+        out = False
         # Process results if they exist
         if results and len(results) > 0:
             detections = results[0].boxes.data.cpu().numpy()  # Get bounding boxes
 
             for box in detections:
-                x1, y1, x2, y2, id, conf, cls = box
+                x1, y1, x2, y2, conf, cls = box
                 if int(cls) == 0:  # Class 0 is "person" in YOLO
+                    out = True
                     cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                     cv2.putText(
                         frame,
-                        f"Pedestrian N:{int(id)} {conf:.2f}",
+                        f"Pedestrian N: {conf:.2f}",
                         (int(x1), int(y1) - 10),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.9,
@@ -619,7 +621,7 @@ class GestureRecognizer:
                     )
                     
         
-        return frame, int(cls) == 0
+        return frame, out
 
     def process_frame(self, frame):
         """
@@ -679,13 +681,16 @@ class GestureRecognizer:
                      frame = self.overlay_stop_sign(frame, hand_landmarks)
                      self.send_signal(signal="stop")
 
-                 elif action_type == "Thumbs Up" or not pedestrian_detected:
+                 elif action_type == "Thumbs Up":
                      frame = self.overlay_come_sign(frame, hand_landmarks)
                      self.send_signal(signal="resume")
                 
         #
         #         # Draw debugging information
         #         self.draw_debug_info(frame, hand_landmarks, hand_label)
+        if not pedestrian_detected:
+            self.send_signal(signal="resume")
+
         frame_rate = 1 / (time.time() - start)
         cv2.putText(frame, f'{frame_rate} FPS' , (350, 30), cv2.FONT_HERSHEY_SIMPLEX,1,(0, 255, 0),2, cv2.LINE_AA)
         return frame
@@ -716,7 +721,7 @@ def main():
     #cap = cv2.VideoCapture(0)
     camera = neoapi.Cam()
     camera.Connect()
-    camera.f.ExposureTime.Set(10000)
+    #camera.f.ExposureTime.Set(10000)
 
     # Check if the webcam is opened correctly
     #if not cap.isOpened():
