@@ -619,7 +619,7 @@ class GestureRecognizer:
                     )
                     
         
-        return frame
+        return frame, int(cls) == 0
 
     def process_frame(self, frame):
         """
@@ -633,7 +633,7 @@ class GestureRecognizer:
         hand_results = self.hands.process(rgb_frame)
 
         # Process the frame for pedestrian detection
-        # frame = self.detect_pedestrians(frame)
+        frame, pedestrian_detected = self.detect_pedestrians(frame)
 
         # # Draw hand landmarks and debugging information
         if hand_results.multi_hand_landmarks and hand_results.multi_handedness:
@@ -679,7 +679,7 @@ class GestureRecognizer:
                      frame = self.overlay_stop_sign(frame, hand_landmarks)
                      self.send_signal(signal="stop")
 
-                 elif action_type == "Thumbs Up" :
+                 elif action_type == "Thumbs Up" or not pedestrian_detected:
                      frame = self.overlay_come_sign(frame, hand_landmarks)
                      self.send_signal(signal="resume")
                 
