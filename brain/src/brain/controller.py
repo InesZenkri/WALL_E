@@ -9,6 +9,8 @@ class Controller:
         """Activates the default working behavior"""
         self.manager.event_queue.put("work_mode")
         return self.manager.job_done_queue.get()
+    def interrupt(self):
+        self.manager.interrupt()
 
     def standby(self):
         """Sets robot to standby mode"""

@@ -1,3 +1,4 @@
+from doctest import FAIL_FAST, TestResults
 import threading
 import queue
 from collections import deque
@@ -11,6 +12,7 @@ class Manager:
     def __init__(self):
         # Create an event queue
         self.event_queue = queue.Queue()
+        self.interrupt_queue = queue.Queue()
         self.job_done_queue = queue.Queue()
         self.mode = deque(maxlen=20)
         self.mode.append("work_mode")
@@ -89,6 +91,9 @@ class Manager:
 
     def wait_until(self):
         logger.info("Executing wait until")
+        if self.interrupt_queue.empty():
+            return False
+        self.interrupt_queue.get() 
         return True
 
     def move(self, x, y):
@@ -113,3 +118,6 @@ class Manager:
         self.thread.join()
         logger.info("Manager stopped successfully")
         return True
+
+    def interrupt(self):
+        self.interrupt_queue.put("interrupt")

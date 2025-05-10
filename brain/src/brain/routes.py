@@ -7,7 +7,6 @@ from brain.connection import call_with_tools, execute_tool_call
 from brain.tools.tools import tools
 from loguru import logger
 
-
 class MessageRequest(BaseModel):
     message: str
 
@@ -44,8 +43,9 @@ async def receive_message(request: MessageRequest):
         return {"message": response.choices[0].message.content}
 
     except Exception as e:
-        logger.error(f"An error occurred: {str(e)}")
-        logger.error(f"{response}")
-        logger.error(f"{messages}")
-        raise e
         return {"error": f"Error processing message: {str(e)}"}
+
+@app.post("/interrupt")
+async def interrupt():
+    controller.interrupt()
+    return {"status": "resumed"}
