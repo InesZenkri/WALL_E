@@ -1,0 +1,16 @@
+pyproject.toml
+requirements.txt
+src/brain/__init__.py
+src/brain/connection.py
+src/brain/controller.py
+src/brain/fast_api.py
+src/brain/manager.py
+src/brain/prompt.py
+src/brain/routes.py
+src/brain/settings.py
+src/brain.egg-info/PKG-INFO
+src/brain.egg-info/SOURCES.txt
+src/brain.egg-info/dependency_links.txt
+src/brain.egg-info/requires.txt
+src/brain.egg-info/top_level.txt
+src/brain/tools/tools.py

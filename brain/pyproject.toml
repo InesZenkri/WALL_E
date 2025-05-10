@@ -1,0 +1,34 @@
+[build-system]
+# Tell pip to use setuptools as the build backend
+requires = ["setuptools>=62.6", "wheel"]  # setuptools >= 62.6 for dynamic dependencies :contentReference[oaicite:0]{index=0}
+build-backend = "setuptools.build_meta"   # standardized PEP 517 backend declaration :contentReference[oaicite:1]{index=1}
+
+[project]
+name = "brain"                          # your package name
+version = "0.1.0"                         # start with 0.1.0
+description = "Your backend package"
+readme = "README.md"
+authors = [ { name="mwerner", email="you@example.com" } ]
+license = { file="LICENSE" }
+requires-python = ">=3.7"
+
+# Declare that 'dependencies' will be supplied from an external file
+dynamic = ["dependencies"]                # enable dynamic field :contentReference[oaicite:2]{index=2}
+
+[tool.setuptools.dynamic]
+# Point dependencies to requirements.txt
+dependencies = { file = ["requirements.txt"] }  # each line must follow PEP 508 :contentReference[oaicite:3]{index=3}
+
+[tool.isort]
+profile = "black"
+
+[cosmic-ray]
+module-path = "src/backend"
+timeout = 10.0
+excluded-modules = []
+test-command = "pytest"
+
+[cosmic-ray.distributor]
+name = "http"
+[cosmic-ray.distributor.http]
+worker-urls = ['http://localhost:9877', 'http://localhost:9878', 'http://localhost:9879', 'http://localhost:9880', 'http://localhost:9881', 'http://localhost:9882', 'http://localhost:9883', 'http://localhost:9884', 'http://localhost:9885', 'http://localhost:9886', 'http://localhost:9887', 'http://localhost:9888', 'http://localhost:9889', 'http://localhost:9890', 'http://localhost:9891', 'http://localhost:9892', 'http://localhost:9893', 'http://localhost:9894', 'http://localhost:9895', 'http://localhost:9896']

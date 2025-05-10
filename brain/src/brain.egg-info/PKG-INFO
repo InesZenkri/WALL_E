@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: brain
+Version: 0.1.0
+Summary: Your backend package
+Author-email: mwerner <you@example.com>
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: openai>=1.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pydantic_settings
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: loguru
