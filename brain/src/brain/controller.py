@@ -54,6 +54,11 @@ class Controller:
         event = f"wait_until"
         self.manager.event_queue.put(event)
         return self.manager.job_done_queue.get()
+    
+    def stop_event(self):
+        self.manager.stop_event()
+    def resume_from_stop(self):
+        self.manager.resume_from_stop()
 
     def save_position(self, location_name: str):
         """Saves the current position"""

@@ -14,6 +14,16 @@ class MessageRequest(BaseModel):
 messages = deque(maxlen=100)
 message_lock = asyncio.Lock()
 
+@app.post("/stop")
+async def stop():
+    controller.stop_event()
+    return "ok"
+
+@app.post("/resume")
+async def resume():
+    controller.resume_from_stop()
+    return "ok"
+
 @app.post("/command")
 async def receive_message(request: MessageRequest):
     async with message_lock:

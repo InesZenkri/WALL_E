@@ -36,9 +36,9 @@ Available Modes:
 - unstuck: Used only if the robot is stuck or explicitly told to do so.
 
 Available Locations:
-- position_a: Location A in the factory.
-- position_b: Location B in the factory.
-- position_c: Location C in the factory.
+- position_storage: Storage location factory tools.
+- position_shelf: Storage shelf in the factory.
+- position_home: Homeposition.
 
 Movement Parameters:
 - Minimum distance: 1 meter

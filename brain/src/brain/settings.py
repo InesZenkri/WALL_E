@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     Application settings loaded from environment variables.
     Uses Pydantic for validation and .env file loading.
     """
-    temperature: float = 0.7
+    temperature: float = 0.9
 
     # OpenAI API settings
     openai_api_key: SecretStr = Field(..., description="OpenAI API key")
