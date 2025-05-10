@@ -23,7 +23,7 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    URL: str = "http://192.168.20.1:8081"
+    URL: str = "http://192.168.24.82:8081"
 
 
 

@@ -1356,3 +1356,21 @@ TypeError: can only concatenate str (not "float") to str
 2025-05-10 16:09:32.720 | INFO     | brain.manager:loop:41 - Event loop started
 2025-05-10 16:09:32.720 | INFO     | brain.manager:__init__:36 - Manager daemon thread started
 2025-05-10 16:09:32.723 | INFO     | brain.fast_api:startup_event:31 - 🚀 FastAPI app is starting up...
+2025-05-10 22:30:28.444 | INFO     | brain.manager:__init__:36 - Initializing Manager
+2025-05-10 22:30:28.444 | DEBUG    | brain.manager:__init__:37 - Initial mode queue: ['work_mode', 'work_mode', 'work_mode']
+2025-05-10 22:30:28.444 | INFO     | brain.manager:loop:50 - Event loop started
+2025-05-10 22:30:28.445 | INFO     | brain.manager:__init__:45 - Manager daemon thread started
+2025-05-10 22:30:28.450 | DEBUG    | asyncio.selector_events:__init__:54 - Using selector: EpollSelector
+2025-05-10 22:30:28.470 | INFO     | uvicorn.server:_serve:83 - Started server process [3685768]
+2025-05-10 22:30:28.471 | INFO     | uvicorn.lifespan.on:startup:48 - Waiting for application startup.
+2025-05-10 22:30:28.471 | INFO     | brain.fast_api:startup_event:31 - 🚀 FastAPI app is starting up...
+2025-05-10 22:30:28.471 | INFO     | uvicorn.lifespan.on:startup:62 - Application startup complete.
+2025-05-10 22:30:28.472 | INFO     | uvicorn.server:_log_started_message:215 - Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-05-10 22:30:29.445 | DEBUG    | brain.manager:loop:64 - No event in queue, using default mode: work_mode
+2025-05-10 22:30:29.446 | INFO     | brain.manager:work_mode:150 - Executing work_mode
+2025-05-10 22:30:29.446 | INFO     | brain.manager:gotopoint:239 - Going to point: position_shelf (type: predefined)
+2025-05-10 22:30:29.450 | DEBUG    | urllib3.connectionpool:_new_conn:241 - Starting new HTTP connection (1): 192.168.20.1:8081
+2025-05-10 22:30:56.582 | INFO     | uvicorn.server:shutdown:263 - Shutting down
+2025-05-10 22:30:56.683 | INFO     | uvicorn.lifespan.on:shutdown:67 - Waiting for application shutdown.
+2025-05-10 22:30:56.684 | INFO     | uvicorn.lifespan.on:shutdown:76 - Application shutdown complete.
+2025-05-10 22:30:56.684 | INFO     | uvicorn.server:_serve:93 - Finished server process [3685768]

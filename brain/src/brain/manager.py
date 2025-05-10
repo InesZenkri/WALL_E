@@ -143,7 +143,7 @@ class Manager:
 )
 
     def resume_from_stop(self):
-        self.event_queue("resume_from_stop")
+        self.event_queue.put("resume_from_stop")
         pass
 
     def work_mode(self):
@@ -199,7 +199,7 @@ class Manager:
             diff_y = ((current_y - self.target_y)**2)
 
             # Check if the differences are within the threshold
-            return math.sqrt(diff_x + diff_y) < 0.1
+            return math.sqrt(diff_x + diff_y) < 0.2
                
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to fetch current pose: {e}")
