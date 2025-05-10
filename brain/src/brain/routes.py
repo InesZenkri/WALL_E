@@ -14,7 +14,7 @@ class MessageRequest(BaseModel):
 messages = deque(maxlen=100)
 message_lock = asyncio.Lock()
 
-@app.post("/message")
+@app.post("/command")
 async def receive_message(request: MessageRequest):
     async with message_lock:
         loop = asyncio.get_event_loop()

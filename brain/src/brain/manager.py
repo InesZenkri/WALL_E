@@ -3,7 +3,10 @@ import threading
 import queue
 from collections import deque
 import time
+import requests
+from brain.settings import get_settings
 from loguru import logger
+import math
 
 # Configure loguru
 logger.add("manager.log", rotation="10 MB", level="DEBUG")
@@ -32,6 +35,8 @@ class Manager:
         self.thread.start()
         logger.info("Manager daemon thread started")
 
+        self._new_event = False
+
     def loop(self):
         logger.info("Event loop started")
         while self.running:
@@ -39,10 +44,12 @@ class Manager:
                 # Get event from queue with timeout
                 event = self.event_queue.get(timeout=1)
                 self.interrupt_state = event == "interrupt"
+                self._new_event = False
                 if event is None or self.interrupt_state:
                     event = self.mode[0]
                     logger.debug(f"No event in queue, using default mode: {event}")
                 else:
+                    self._new_event = True
                     self.mode.append(event)
                     split_event = event.split(";")
                     logger.debug(f"New event appended to mode queue: {list(self.mode)}")
@@ -100,8 +107,64 @@ class Manager:
         return True
 
     def move(self, x, y):
-        logger.info(f"Moving to coordinates: x={x}, y={y}")
-        return True
+        try:
+            # Fetch the current pose from the API
+            response = requests.get(f"{get_settings().URL}/api/ros/sew_bot/pose")
+            response.raise_for_status()  # Raise an exception for HTTP errors
+
+            # Parse the JSON response
+            current_pose = response.json()
+            current_x = current_pose["transform"]["translation"]["x"]
+            current_y = current_pose["transform"]["translation"]["y"]
+            if self._new_event:
+                self.target_x = round(float(x) + current_x,1)
+                self.target_y = round(float(y) + current_y,1)
+                # send move 
+
+                logger.info(f"Moving to target position: x={self.target_x}, y={self.target_y}")
+                
+                navigate_payload = {
+                    "pose": {
+                        "orientation": {
+                            "w": 1.0,
+                            "x": 0.0,
+                            "y": 0.0,
+                            "z": 0.0
+                        },
+                        "position": {
+                            "x": self.target_x,
+                            "y": self.target_y,
+                            "z": 0
+                        }
+                    }
+                }
+
+                logger.info(f"Sending navigation command: {navigate_payload}")
+                
+                navigate_response = requests.post(
+                    f"{get_settings().URL}/api/ros/sew_bot/goal_pose",
+                    json=navigate_payload,
+                    headers={"Content-Type": "application/json"}
+        )
+            
+
+            # Log the current and target positions
+            logger.info(f"Current pose: x={current_x}, y={current_y}")
+            logger.info(f"Target pose: x={self.target_x}, y={self.target_y}")
+
+            # Calculate the differences
+            diff_x = ((current_x - self.target_x)**2)
+            diff_y = ((current_y - self.target_y)**2)
+
+            # Check if the differences are within the threshold
+            return math.sqrt(diff_x + diff_y) < 0.5
+               
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch current pose: {e}")
+            return False
+        except KeyError as e:
+            logger.error(f"Unexpected response format: {e}")
+            return False
 
     def gotopoint(self, location_name, location_type):
         logger.info(f"Going to point: {location_name} (type: {location_type})")

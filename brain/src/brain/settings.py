@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     Application settings loaded from environment variables.
     Uses Pydantic for validation and .env file loading.
     """
+    temperature: float = 0.7
 
     # OpenAI API settings
     openai_api_key: SecretStr = Field(..., description="OpenAI API key")
@@ -21,6 +22,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
+
+    URL: str = "http://192.168.20.1:8081"
 
 
 

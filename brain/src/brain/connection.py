@@ -130,7 +130,7 @@ def execute_tool_call(
                 logger.info(f"Tool Arguments: {tool_args}")
 
                 tool_to_call = available_tools[tool_name]
-                result = tool_to_call["function"](**tool_to_call["parameters"])
+                result = tool_to_call["function"](**tool_args)
                 logger.info(f"Tool Result: {result}")
 
                 tool_results.append(result)
