@@ -16,3 +16,4 @@ brain/src/brain.egg-info/dependency_links.txt
 brain/src/brain.egg-info/SOURCES.txt
 brain/src/brain.egg-info/top_level.txt
 brain/.env
+.env
