@@ -1,0 +1,9 @@
+git+https://github.com/openai/whisper.git
+#torch
+sounddevice
+numpy
+#torchvision
+#torchaudio
+mediapipe
+opencv-python
+ultralytics>=8.0.0
