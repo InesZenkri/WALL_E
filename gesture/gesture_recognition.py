@@ -14,7 +14,7 @@ import neoapi
 class GestureRecognizer:
     def __init__(self):
         # flag for sending a stop command
-        self.stop_flag = False
+        self.flag = False
 
         # Initialize MediaPipe Hands
         self.mp_hands = mp.solutions.hands
@@ -31,6 +31,7 @@ class GestureRecognizer:
             min_detection_confidence=0.7,
             min_tracking_confidence=0.7
         )
+        self.epoch = time.time()
 
         # Initialize drawing utilities
         self.mp_drawing = mp.solutions.drawing_utils
@@ -471,6 +472,7 @@ class GestureRecognizer:
 
         return fingers_extended, thumb_extended
 
+
     def recognize_gestures(self, hand_landmarks, handedness, hand_id, frame_width, frame_height):
         """
         Recognize gestures based on hand landmarks and handedness.
@@ -481,7 +483,6 @@ class GestureRecognizer:
 
         # Determine palm orientation
         palm_orientation = self.calculate_palm_orientation(hand_landmarks, handedness)
-
         # Recognize gestures
         if all(fingers_extended) and thumb_extended:
             if palm_orientation == "Palm Facing Camera":
@@ -493,6 +494,7 @@ class GestureRecognizer:
                 # else:
                 return "Open Hand (Palm)", "Stop"
             else:
+                
                 return "Open Hand (Back)", None
         # elif not any(fingers_extended) and not thumb_extended:
         #     return "Fist", None
@@ -500,8 +502,8 @@ class GestureRecognizer:
         #     return "Pointing", None
         # elif fingers_extended[0] and fingers_extended[1] and not any(fingers_extended[2:]):
         #     return "Peace Sign", None
-        # elif thumb_extended and not any(fingers_extended):
-        #     return "Thumbs Up", None
+        elif thumb_extended and not any(fingers_extended):
+            return "Thumbs Up", None
         # elif not thumb_extended and not fingers_extended[0] and all(fingers_extended[1:]):
         #     return "Rock On", None
         # elif fingers_extended[0] and fingers_extended[3] and not fingers_extended[1] and not fingers_extended[2]:
@@ -615,7 +617,7 @@ class GestureRecognizer:
                         (0, 255, 0),
                         2
                     )
-                    self.send_stop()
+                    
         
         return frame
 
@@ -625,58 +627,62 @@ class GestureRecognizer:
         """
         start = time.time()
         # # Convert the BGR image to RGB for MediaPipe
-        # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # # Process the frame for hand detection
-        # hand_results = self.hands.process(rgb_frame)
+        hand_results = self.hands.process(rgb_frame)
 
         # Process the frame for pedestrian detection
-        frame = self.detect_pedestrians(frame)
+        # frame = self.detect_pedestrians(frame)
 
         # # Draw hand landmarks and debugging information
-        # if hand_results.multi_hand_landmarks and hand_results.multi_handedness:
-        #     for i, (hand_landmarks, handedness) in enumerate(zip(hand_results.multi_hand_landmarks, hand_results.multi_handedness)):
-        #         # Draw the hand landmarks
-        #         self.mp_drawing.draw_landmarks(
-        #             frame,
-        #             hand_landmarks,
-        #             self.mp_hands.HAND_CONNECTIONS,
-        #             self.mp_drawing_styles.get_default_hand_landmarks_style(),
-        #             self.mp_drawing_styles.get_default_hand_connections_style()
-        #         )
-        #
-        #         # Get handedness (Left or Right)
-        #         hand_label = handedness.classification[0].label
-        #
-        #         # Create a unique ID for this hand
-        #         hand_id = f"{hand_label}_{i}"
-        #
-        #         # Recognize and display the gesture
-        #         gesture, action_type = self.recognize_gestures(
-        #             hand_landmarks,
-        #             hand_label,
-        #             hand_id,
-        #             frame.shape[1],
-        #             frame.shape[0]
-        #         )
-        #
-        #         # Display gesture name
-        #         cv2.putText(
-        #             frame,
-        #             f"Gesture: {gesture}",
-        #             (10, 30),
-        #             cv2.FONT_HERSHEY_SIMPLEX,
-        #             1,
-        #             (0, 255, 0),
-        #             2,
-        #             cv2.LINE_AA
-        #         )
+        if hand_results.multi_hand_landmarks and hand_results.multi_handedness:
+            for i, (hand_landmarks, handedness) in enumerate(zip(hand_results.multi_hand_landmarks, hand_results.multi_handedness)):
+                 # Draw the hand landmarks
+                 self.mp_drawing.draw_landmarks(
+                     frame,
+                     hand_landmarks,
+                     self.mp_hands.HAND_CONNECTIONS,
+                     self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                     self.mp_drawing_styles.get_default_hand_connections_style()
+                 )
+        
+                 # Get handedness (Left or Right)
+                 hand_label = handedness.classification[0].label
+        
+                 # Create a unique ID for this hand
+                 hand_id = f"{hand_label}_{i}"
+        
+                 # Recognize and display the gesture
+                 gesture, action_type = self.recognize_gestures(
+                     hand_landmarks,
+                     hand_label,
+                     hand_id,
+                     frame.shape[1],
+                     frame.shape[0]
+                 )
+        
+                 # Display gesture name
+                 cv2.putText(
+                     frame,
+                     f"Gesture: {gesture}",
+                     (10, 30),
+                     cv2.FONT_HERSHEY_SIMPLEX,
+                     1,
+                     (0, 255, 0),
+                     2,
+                     cv2.LINE_AA
+                 )
         #
         #         # If it's a stop or come gesture, overlay the appropriate sign
-        #         if action_type == "Stop":
-        #             frame = self.overlay_stop_sign(frame, hand_landmarks)
-        #         elif action_type == "Come":
-        #             frame = self.overlay_come_sign(frame, hand_landmarks)
+                 if action_type == "Stop":
+                     frame = self.overlay_stop_sign(frame, hand_landmarks)
+                     self.send_signal(signal="stop")
+
+                 elif action_type == "Come":
+                     frame = self.overlay_come_sign(frame, hand_landmarks)
+                     self.send_signal(signal="resume")
+                
         #
         #         # Draw debugging information
         #         self.draw_debug_info(frame, hand_landmarks, hand_label)
@@ -684,18 +690,18 @@ class GestureRecognizer:
         cv2.putText(frame, f'{frame_rate} FPS' , (350, 30), cv2.FONT_HERSHEY_SIMPLEX,1,(0, 255, 0),2, cv2.LINE_AA)
         return frame
 
-    def send_stop(self):
-        if not self.stop_flag:
+    def send_signal(self, signal):
+        if self.epoch < time.time():
             # Send transcription as JSON with the correct format
             try:
-                print(f"Attempting to send to http://192.168.1.104:8000/command...")
+                print(f"Attempting to send to http://192.168.1.104:8000/{signal}...")
                 response = requests.post(
-                    'http://192.168.1.104:8000/stop',
+                    f'http://192.168.1.104:8000/{signal}',
                     timeout=1000
                 )
                 print(f"Response status: {response.status_code}")
                 print(f"Response content: {response.text}")
-                self.stop_flag = True
+                self.epoch = time.time() + 5
             except requests.exceptions.ConnectionError as e:
                 print(
                     f"Connection Error: Could not connect to the server. Please check if the server is running at 192.168.1.104:8000")
@@ -725,7 +731,6 @@ def main():
         # Read a frame from the webcam
 
         frame = camera.GetImage().GetNPArray()
-        #print("frame222222", type(frame))
         success = True
         if not success:
             print("Error: Failed to read frame from webcam.")
