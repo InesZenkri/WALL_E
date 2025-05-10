@@ -2,6 +2,8 @@ from doctest import FAIL_FAST, TestResults
 import threading
 import queue
 from collections import deque
+import time
+from brain.routes import interrupt
 from loguru import logger
 
 # Configure loguru
@@ -35,15 +37,17 @@ class Manager:
         while self.running:
             try:
                 # Get event from queue with timeout
-                event = self.event_queue.get(timeout=1.0)
+                event = self.event_queue.get(timeout=1)
                 if event is None:
                     event = self.mode[0]
                     logger.debug(f"No event in queue, using default mode: {event}")
-                else:
+                elif event != "interrupt":
                     self.mode.append(event)
+                    split_event = event.split(";")
                     logger.debug(f"New event appended to mode queue: {list(self.mode)}")
-
-                split_event = event.split(";")
+                else:
+                    split_event = ["interrupt", self.mode[0]]
+                    logger.debug("Interrupt")
                 method = getattr(self, split_event[0])
 
                 # Call the method with parameters if they exist
@@ -121,3 +125,5 @@ class Manager:
 
     def interrupt(self):
         self.interrupt_queue.put("interrupt")
+        self.event_queue.put("interrupt")
+        

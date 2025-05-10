@@ -6,16 +6,23 @@ from collections import deque
 from brain.connection import call_with_tools, execute_tool_call
 from brain.tools.tools import tools
 from loguru import logger
-
+import asyncio
 class MessageRequest(BaseModel):
     message: str
 
 
 messages = deque(maxlen=100)
-
+message_lock = asyncio.Lock()
 
 @app.post("/message")
 async def receive_message(request: MessageRequest):
+    if message_lock.locked():
+        return {"error": "Another message is currently being processed. Please try again later."}
+    async with message_lock:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, help_receive_message, request)
+        return result
+def help_receive_message(request: MessageRequest):
     try:
         
         logger.info(f"User Input: {request.message}")
