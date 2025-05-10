@@ -1,5 +1,7 @@
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -13,7 +15,6 @@ class Settings(BaseSettings):
     openai_model: str = Field("gpt4.1", description="OpenAI model to use")
 
     # Optional additional settings
-    temperature: float = Field(0.7, description="Temperature for OpenAI completions")
     max_tokens: int = Field(1000, description="Maximum tokens for completions")
 
     # Configure the settings to load from .env file
@@ -22,9 +23,9 @@ class Settings(BaseSettings):
     )
 
 
+
 # Create a global instance of settings
 settings = Settings()
-
 
 def get_settings() -> Settings:
     """
