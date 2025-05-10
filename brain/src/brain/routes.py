@@ -16,8 +16,6 @@ message_lock = asyncio.Lock()
 
 @app.post("/message")
 async def receive_message(request: MessageRequest):
-    if message_lock.locked():
-        return {"error": "Another message is currently being processed. Please try again later."}
     async with message_lock:
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, help_receive_message, request)
