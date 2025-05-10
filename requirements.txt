@@ -1,0 +1,7 @@
+# Core dependencies
+openai-whisper==20231117
+openai==1.12.0
+numpy==1.24.3
+sounddevice==0.4.6
+scipy==1.11.4
+python-dotenv==1.0.0 
