@@ -27,13 +27,11 @@ Available Modes:
 - work_mode: Default operational mode. Continuously monitor for tasks and maintain optimal readiness.
 - standby: Idle mode, waiting for new instructions with minimal activity to conserve energy.
 - halt: Pause all movement and wait for further instructions. The robot maintains its current position.
-- resume: Continue the previous task or operation from the last known state.
 - move: Drive the robot a specified distance in meters.
 - gotopoint: Navigate the robot to a specific named location.
 - sleep: Pause operations for a specified number of seconds. Must be used to implement any wait time.
 - wait_until: Pause operations until a externl interrupt.
 - save_position: Save the current position under a given name for future reference. The last 10 saved positions are kept for quick access. The names are only for you not for the user. Don't ask for a name just pick one.
-- unstuck: Used only if the robot is stuck or explicitly told to do so.
 
 Available Locations:
 - position_storage: Storage location factory tools.

@@ -18,24 +18,8 @@ tools = [
     {
         "type": "function",
         "function": {
-            "name": "unstuck_position",
-            "description": "Use if the robotor is stuck.",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "halt",
             "description": "Stops the robot and maintains current position until further instructions.",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "resume",
-            "description": "Resumes previous task or operation from last known state.",
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },

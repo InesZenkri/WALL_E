@@ -17,20 +17,11 @@ class Controller:
         self.manager.event_queue.put("standby")
         return self.manager.job_done_queue.get()
 
-    def unstuck_position(self):
-        """Move back to the start position"""
-        self.manager.event_queue.put("unstuck_position")
-        return self.manager.job_done_queue.get()
-
     def halt(self):
         """Stops the robot and maintains current position"""
         self.manager.event_queue.put("halt")
         return self.manager.job_done_queue.get()
 
-    def resume(self):
-        """Resumes previous task or operation"""
-        self.manager.event_queue.put("resume")
-        return self.manager.job_done_queue.get()
 
     def move(self, x: float, y: float):
         """Moves the robot in X-Y coordinates"""
@@ -93,21 +84,12 @@ class Controller:
                 "parameters": {},
                 "description": "Sets robot to standby mode",
             },
-            "unstuck_position": {
-                "function": self.unstuck_position,
-                "parameters": {},
-                "description": "Move back to the start position",
-            },
             "halt": {
                 "function": self.halt,
                 "parameters": {},
                 "description": "Stops the robot and maintains current position",
             },
-            "resume": {
-                "function": self.resume,
-                "parameters": {},
-                "description": "Resumes previous task or operation",
-            },
+
             "move": {
                 "function": self.move,
                 "parameters": {

@@ -1,4 +1,5 @@
 from doctest import FAIL_FAST, TestResults
+import re
 import threading
 import queue
 from collections import deque
@@ -24,6 +25,7 @@ class Manager:
         self.mode.append("work_mode")
         self.mode.append("work_mode")
         self.mode.append("work_mode")
+        self.work_state = False
         self.positions = {}
         self.positions["position_storage"] = {"x": 1, "y": 0}
         self.positions["position_shelf"] = {"x": 2, "y": 0} 
@@ -144,22 +146,17 @@ class Manager:
 
     def work_mode(self):
         logger.info("Executing work_mode")
+        self._new_event = True
+        if self.work_state:
+            change_mode = self.gotopoint("position_storage", "predefined")
+        else:
+            change_mode = self.gotopoint("position_shelf","predefined")
+        if change_mode:
+            self.work_state = not self.work_state
         return True
 
     def standby(self):
         logger.info("Executing standby")
-        return True
-
-    def unstuck_position(self):
-        logger.info("Executing unstuck_position")
-        return True
-
-    def resume(self):
-        logger.info("Executing resume")
-        logger.debug(f"Mode queue before resume: {list(self.mode)}")
-        self.mode.popleft()
-        self.mode.popleft()
-        logger.debug(f"Mode queue after resume: {list(self.mode)}")
         return True
 
     def halt(self):
@@ -167,11 +164,7 @@ class Manager:
         return True
 
     def wait_until(self):
-        logger.info("Executing wait until")
-        if self.interrupt_queue.empty():
-            return False
-        self.interrupt_queue.get() 
-        return True
+        return self.sleep(10)
 
     def get_current_position(self):
         response = requests.get(f"{get_settings().URL}/api/ros/sew_bot/pose")
