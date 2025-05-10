@@ -21,7 +21,7 @@ class Manager:
         self.interrupt_queue = queue.Queue()
         self.job_done_queue = queue.Queue()
         self.interrupt_state = False
-        self.mode = deque(maxlen=20)
+        self.mode = []
         self.mode.append("work_mode")
         self.mode.append("work_mode")
         self.mode.append("work_mode")
@@ -66,6 +66,7 @@ class Manager:
                     self.first = True
                     self._new_event = True
                     self.mode.append(event)
+                    self.mode = self.mode[-20:]
                     logger.debug(f"New event appended to mode queue: {list(self.mode)}")
                 if event == "stop_event":
                     if self._new_event:
@@ -108,8 +109,8 @@ class Manager:
 
         # Parse the JSON response
         current_pose = response.json()
-        x = current_pose["transform"]["translation"]["x"]
-        y = current_pose["transform"]["translation"]["y"]
+        x_t = current_pose["transform"]["translation"]["x"]
+        y_t = current_pose["transform"]["translation"]["y"]
         w = current_pose["transform"]["rotation"]["w"]
         z = current_pose["transform"]["rotation"]["z"]
         y = current_pose["transform"]["rotation"]["y"]
@@ -126,8 +127,8 @@ class Manager:
                             "z": z
                         },
                         "position": {
-                            "x": x,
-                            "y": y,
+                            "x": x_t,
+                            "y": y_t,
                             "z": 0
                         }
                     }
@@ -183,7 +184,7 @@ class Manager:
             if self._new_event:
                 self.target_x = round(float(x) + current_x,1)
                 self.target_y = round(float(y) + current_y,1)
-                # send move 
+                self.send_move()
 
                 
             

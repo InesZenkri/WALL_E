@@ -503,7 +503,7 @@ class GestureRecognizer:
         # elif fingers_extended[0] and fingers_extended[1] and not any(fingers_extended[2:]):
         #     return "Peace Sign", None
         elif thumb_extended and not any(fingers_extended):
-            return "Thumbs Up", None
+            return "Thumbs Up", "Thumbs Up"
         # elif not thumb_extended and not fingers_extended[0] and all(fingers_extended[1:]):
         #     return "Rock On", None
         # elif fingers_extended[0] and fingers_extended[3] and not fingers_extended[1] and not fingers_extended[2]:
@@ -679,7 +679,7 @@ class GestureRecognizer:
                      frame = self.overlay_stop_sign(frame, hand_landmarks)
                      self.send_signal(signal="stop")
 
-                 elif action_type == "Come":
+                 elif action_type == "Thumbs Up" :
                      frame = self.overlay_come_sign(frame, hand_landmarks)
                      self.send_signal(signal="resume")
                 
