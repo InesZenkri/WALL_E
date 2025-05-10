@@ -3,7 +3,6 @@ import threading
 import queue
 from collections import deque
 import time
-from brain.routes import interrupt
 from loguru import logger
 
 # Configure loguru
@@ -15,7 +14,7 @@ class Manager:
         # Create an event queue
         self.event_queue = queue.Queue()
         self.interrupt_queue = queue.Queue()
-        self.job_done_queue = queue.Queue()ä
+        self.job_done_queue = queue.Queue()
         self.interrupt_state = False
         self.mode = deque(maxlen=20)
         self.mode.append("work_mode")

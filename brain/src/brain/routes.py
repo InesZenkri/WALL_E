@@ -20,13 +20,14 @@ async def receive_message(request: MessageRequest):
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, help_receive_message, request)
         return result
+
 def help_receive_message(request: MessageRequest):
     try:
         
         logger.info(f"User Input: {request.message}")
         messages.append({"role": "user", "content": request.message})
         iteration = 0
-        while messages[0]["role"] == "tool":
+        while messages[0]["role"] == "tool" or messages[0]["role"] == "assistant":
             messages.popleft()
         while True:
             iteration += 1
