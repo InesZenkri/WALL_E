@@ -716,6 +716,7 @@ def main():
     #cap = cv2.VideoCapture(0)
     camera = neoapi.Cam()
     camera.Connect()
+    camera.f.ExposureTime.Set(10000)
 
     # Check if the webcam is opened correctly
     #if not cap.isOpened():

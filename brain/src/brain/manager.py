@@ -71,6 +71,8 @@ class Manager:
                 if event == "stop_event":
                     if self._new_event:
                         self.stop_event()
+                    if self.mode[-2] == "stop_event":
+                        self.mode.pop(-2)
                     continue
                 if event == "resume_from_stop":
                     if self.mode[-2] == "stop_event":

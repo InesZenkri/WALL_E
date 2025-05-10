@@ -17,3 +17,4 @@ brain/src/brain.egg-info/SOURCES.txt
 brain/src/brain.egg-info/top_level.txt
 brain/.env
 .env
+brain/manager.2025-*
