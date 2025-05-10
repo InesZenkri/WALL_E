@@ -1,10 +1,19 @@
+import time
+import torchreid
+from torchvision import transforms
+from PIL import Image
 import cv2
 import mediapipe as mp
 import numpy as np
 from ultralytics import YOLO  # For pedestrian detection (YOLOv8)
+import torch
+import requests
 
 class GestureRecognizer:
     def __init__(self):
+        # flag for sending a stop command
+        self.stop_flag = False
+
         # Initialize MediaPipe Hands
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
@@ -27,15 +36,13 @@ class GestureRecognizer:
 
         # Load YOLOv8 model for pedestrian detection
         self.yolo_model = YOLO("yolov8n.pt")  # Use YOLOv8 nano for real-time performance
+        self.yolo_model.to("mps")
 
         # Load STOP sign image
         self.stop_sign = cv2.imread("stop_sign.png", cv2.IMREAD_UNCHANGED)
         # If stop sign image is not found, create a simple one
         if self.stop_sign is None:
             self.create_stop_sign()
-
-        # Create COME sign
-        self.come_sign = self.create_come_sign()
 
         # Track hand movement for "Come" gesture
         self.prev_hand_positions = {}  # Dictionary to store previous hand positions
@@ -72,29 +79,6 @@ class GestureRecognizer:
             cv2.LINE_AA
         )
 
-    def create_come_sign(self):
-        """Create a COME sign"""
-        # Create a 200x200 transparent image
-        come_sign = np.zeros((200, 200, 4), dtype=np.uint8)
-
-        # Draw a green circle
-        center = (100, 100)
-        radius = 90
-        cv2.circle(come_sign, center, radius, (0, 255, 0, 220), -1)  # Green with some transparency
-
-        # Add "COME" text
-        cv2.putText(
-            come_sign,
-            "COME",
-            (40, 115),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.5,
-            (255, 255, 255, 255),  # White
-            3,
-            cv2.LINE_AA
-        )
-
-        return come_sign
 
     def detect_hand_movement(self, hand_id, hand_landmarks, frame_width, frame_height):
         """
@@ -500,36 +484,36 @@ class GestureRecognizer:
         if all(fingers_extended) and thumb_extended:
             if palm_orientation == "Palm Facing Camera":
                 # Detect if it's a "Come" or "Stop" gesture based on movement
-                gesture_mode = self.detect_hand_movement(hand_id, hand_landmarks, frame_width, frame_height)
+                # gesture_mode = self.detect_hand_movement(hand_id, hand_landmarks, frame_width, frame_height)
 
-                if gesture_mode == "Come":
-                    return "Come", "Come"
-                else:
-                    return "Open Hand (Palm)", "Stop"
+                # if gesture_mode == "Come":
+                #     return "Come", "Come"
+                # else:
+                return "Open Hand (Palm)", "Stop"
             else:
-                return "Open Hand (Back)", "Stop"
-        elif not any(fingers_extended) and not thumb_extended:
-            return "Fist", None
-        elif fingers_extended[0] and not any(fingers_extended[1:]) and not thumb_extended:
-            return "Pointing", None
-        elif fingers_extended[0] and fingers_extended[1] and not any(fingers_extended[2:]):
-            return "Peace Sign", None
-        elif thumb_extended and not any(fingers_extended):
-            return "Thumbs Up", None
-        elif not thumb_extended and not fingers_extended[0] and all(fingers_extended[1:]):
-            return "Rock On", None
-        elif fingers_extended[0] and fingers_extended[3] and not fingers_extended[1] and not fingers_extended[2]:
-            return "Spider-Man", None
-        elif all(fingers_extended) and not thumb_extended:
-            return "Four Fingers", None
-        elif fingers_extended[0] and fingers_extended[1] and fingers_extended[2] and not fingers_extended[3]:
-            return "Three Fingers", None
-        elif not thumb_extended and not fingers_extended[0] and not fingers_extended[1] and fingers_extended[2] and fingers_extended[3]:
-            return "Horns", None
-        elif thumb_extended and fingers_extended[0] and not any(fingers_extended[1:]):
-            return "Gun", None
-        elif thumb_extended and fingers_extended[3] and not any([fingers_extended[0], fingers_extended[1], fingers_extended[2]]):
-            return "Hang Loose", None
+                return "Open Hand (Back)", None
+        # elif not any(fingers_extended) and not thumb_extended:
+        #     return "Fist", None
+        # elif fingers_extended[0] and not any(fingers_extended[1:]) and not thumb_extended:
+        #     return "Pointing", None
+        # elif fingers_extended[0] and fingers_extended[1] and not any(fingers_extended[2:]):
+        #     return "Peace Sign", None
+        # elif thumb_extended and not any(fingers_extended):
+        #     return "Thumbs Up", None
+        # elif not thumb_extended and not fingers_extended[0] and all(fingers_extended[1:]):
+        #     return "Rock On", None
+        # elif fingers_extended[0] and fingers_extended[3] and not fingers_extended[1] and not fingers_extended[2]:
+        #     return "Spider-Man", None
+        # elif all(fingers_extended) and not thumb_extended:
+        #     return "Four Fingers", None
+        # elif fingers_extended[0] and fingers_extended[1] and fingers_extended[2] and not fingers_extended[3]:
+        #     return "Three Fingers", None
+        # elif not thumb_extended and not fingers_extended[0] and not fingers_extended[1] and fingers_extended[2] and fingers_extended[3]:
+        #     return "Horns", None
+        # elif thumb_extended and fingers_extended[0] and not any(fingers_extended[1:]):
+        #     return "Gun", None
+        # elif thumb_extended and fingers_extended[3] and not any([fingers_extended[0], fingers_extended[1], fingers_extended[2]]):
+        #     return "Hang Loose", None
         else:
             return "Unknown Gesture", None
 
@@ -592,86 +576,111 @@ class GestureRecognizer:
         """
         Detect pedestrians using YOLOv8.
         """
-        results = self.yolo_model(frame)
+
+        results = self.yolo_model.track(frame, persist=True)
         detections = results[0].boxes.data.cpu().numpy()  # Get bounding boxes
 
         for box in detections:
-            x1, y1, x2, y2, conf, cls = box
+            x1, y1, x2, y2, id, conf, cls = box
             if int(cls) == 0:  # Class 0 is "person" in YOLO
                 cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                 cv2.putText(
                     frame,
-                    f"Pedestrian {conf:.2f}",
+                    f"Pedestrian N:{int(id)} {conf:.2f}",
                     (int(x1), int(y1) - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.9,
                     (0, 255, 0),
                     2
                 )
+                self.send_stop()
         return frame
 
     def process_frame(self, frame):
         """
         Process a single frame for gesture recognition and debugging.
         """
-        # Convert the BGR image to RGB for MediaPipe
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        start = time.time()
+        # # Convert the BGR image to RGB for MediaPipe
+        # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # Process the frame for hand detection
-        hand_results = self.hands.process(rgb_frame)
+        # # Process the frame for hand detection
+        # hand_results = self.hands.process(rgb_frame)
 
         # Process the frame for pedestrian detection
         frame = self.detect_pedestrians(frame)
 
-        # Draw hand landmarks and debugging information
-        if hand_results.multi_hand_landmarks and hand_results.multi_handedness:
-            for i, (hand_landmarks, handedness) in enumerate(zip(hand_results.multi_hand_landmarks, hand_results.multi_handedness)):
-                # Draw the hand landmarks
-                self.mp_drawing.draw_landmarks(
-                    frame,
-                    hand_landmarks,
-                    self.mp_hands.HAND_CONNECTIONS,
-                    self.mp_drawing_styles.get_default_hand_landmarks_style(),
-                    self.mp_drawing_styles.get_default_hand_connections_style()
-                )
-
-                # Get handedness (Left or Right)
-                hand_label = handedness.classification[0].label
-
-                # Create a unique ID for this hand
-                hand_id = f"{hand_label}_{i}"
-
-                # Recognize and display the gesture
-                gesture, action_type = self.recognize_gestures(
-                    hand_landmarks,
-                    hand_label,
-                    hand_id,
-                    frame.shape[1],
-                    frame.shape[0]
-                )
-
-                # Display gesture name
-                cv2.putText(
-                    frame,
-                    f"Gesture: {gesture}",
-                    (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 0),
-                    2,
-                    cv2.LINE_AA
-                )
-
-                # If it's a stop or come gesture, overlay the appropriate sign
-                if action_type == "Stop":
-                    frame = self.overlay_stop_sign(frame, hand_landmarks)
-                elif action_type == "Come":
-                    frame = self.overlay_come_sign(frame, hand_landmarks)
-
-                # Draw debugging information
-                self.draw_debug_info(frame, hand_landmarks, hand_label)
-
+        # # Draw hand landmarks and debugging information
+        # if hand_results.multi_hand_landmarks and hand_results.multi_handedness:
+        #     for i, (hand_landmarks, handedness) in enumerate(zip(hand_results.multi_hand_landmarks, hand_results.multi_handedness)):
+        #         # Draw the hand landmarks
+        #         self.mp_drawing.draw_landmarks(
+        #             frame,
+        #             hand_landmarks,
+        #             self.mp_hands.HAND_CONNECTIONS,
+        #             self.mp_drawing_styles.get_default_hand_landmarks_style(),
+        #             self.mp_drawing_styles.get_default_hand_connections_style()
+        #         )
+        #
+        #         # Get handedness (Left or Right)
+        #         hand_label = handedness.classification[0].label
+        #
+        #         # Create a unique ID for this hand
+        #         hand_id = f"{hand_label}_{i}"
+        #
+        #         # Recognize and display the gesture
+        #         gesture, action_type = self.recognize_gestures(
+        #             hand_landmarks,
+        #             hand_label,
+        #             hand_id,
+        #             frame.shape[1],
+        #             frame.shape[0]
+        #         )
+        #
+        #         # Display gesture name
+        #         cv2.putText(
+        #             frame,
+        #             f"Gesture: {gesture}",
+        #             (10, 30),
+        #             cv2.FONT_HERSHEY_SIMPLEX,
+        #             1,
+        #             (0, 255, 0),
+        #             2,
+        #             cv2.LINE_AA
+        #         )
+        #
+        #         # If it's a stop or come gesture, overlay the appropriate sign
+        #         if action_type == "Stop":
+        #             frame = self.overlay_stop_sign(frame, hand_landmarks)
+        #         elif action_type == "Come":
+        #             frame = self.overlay_come_sign(frame, hand_landmarks)
+        #
+        #         # Draw debugging information
+        #         self.draw_debug_info(frame, hand_landmarks, hand_label)
+        frame_rate = 1 / (time.time() - start)
+        cv2.putText(frame, f'{frame_rate} FPS' , (350, 30), cv2.FONT_HERSHEY_SIMPLEX,1,(0, 255, 0),2, cv2.LINE_AA)
         return frame
+
+    def send_stop(self):
+        if not self.stop_flag:
+            # Send transcription as JSON with the correct format
+            try:
+                print(f"Attempting to send to http://192.168.1.104:8000/command...")
+                response = requests.post(
+                    'http://192.168.1.104:8000/stop',
+                    timeout=1000
+                )
+                print(f"Response status: {response.status_code}")
+                print(f"Response content: {response.text}")
+                self.stop_flag = True
+            except requests.exceptions.ConnectionError as e:
+                print(
+                    f"Connection Error: Could not connect to the server. Please check if the server is running at 192.168.1.104:8000")
+                print(f"Detailed error: {str(e)}")
+            except requests.exceptions.Timeout as e:
+                print(f"Timeout Error: The server took too long to respond")
+            except requests.exceptions.RequestException as e:
+                print(f"Request Error: {str(e)}")
 
 def main():
     # Initialize the webcam
