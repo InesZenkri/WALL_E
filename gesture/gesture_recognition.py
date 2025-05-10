@@ -696,7 +696,7 @@ class GestureRecognizer:
             try:
                 print(f"Attempting to send to http://192.168.1.104:8000/{signal}...")
                 response = requests.post(
-                    f'http://192.168.1.104:8000/{signal}',
+                    f'http://localhost:8000/{signal}',
                     timeout=1000
                 )
                 print(f"Response status: {response.status_code}")
