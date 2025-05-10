@@ -47,7 +47,7 @@ class Controller:
         return self.manager.job_done_queue.get()
     
     def stop_event(self):
-        self.manager.stop_event()
+        self.manager.event_queue.put("stop_event")
     def resume_from_stop(self):
         self.manager.resume_from_stop()
 

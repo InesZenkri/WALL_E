@@ -143,6 +143,7 @@ class Manager:
 )
 
     def resume_from_stop(self):
+        self.event_queue("resume_from_stop")
         pass
 
     def work_mode(self):
