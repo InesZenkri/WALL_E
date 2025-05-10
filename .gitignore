@@ -1,0 +1,6 @@
+brain/manager.log
+brain/src/brain/__pycache__/settings.cpython-311.pyc
+brain/src/brain.egg-info/PKG-INFO
+brain/src/brain.egg-info/requires.txt
+__pycache__/**
+brain.egg-info/**
