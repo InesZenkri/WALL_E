@@ -1,5 +1,7 @@
 #  Docu For WALLE
 
+![alt text](img/WALL_E.jpg)
+
 ## Build Backend
 
 to build the FastAPI Backend run
@@ -25,9 +27,7 @@ Cool you have build and set up the Backend 🚀 .
 Now it is time to get some real work done !
 
 > [!NOTE]  
-> If your robot is not using the IP **192.168.24.82:8081** change it in the *brain/settings* accordingly
-
-
+> If your robot is not using the IP **192.168.24.82** change it in the *brain/settings.py* accordingly
 
 ## Start Backend
 
@@ -86,4 +86,8 @@ Will resume the movement to the last target position
 
 MAX?
 
-## Send Data to Backend 
+## Send Data to Backend automatically
+
+Ok so far you started the Backend and have to send some REST API comannds yourself. But you want to be cooler right? Do also this step automatically, right?
+
+So you speek to the robot and it performes its movement automatically.
