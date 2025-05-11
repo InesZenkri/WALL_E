@@ -13,7 +13,6 @@ import math
 logger.add("manager.log", rotation="10 MB", level="DEBUG")
 
 
-
 class Manager:
     def __init__(self):
         # Create an event queue
@@ -27,8 +26,8 @@ class Manager:
         self.mode.append("work_mode")
         self.work_state = False
         self.positions = {}
-        self.positions["position_storage"] = {"x": 9, "y": 0}
-        self.positions["position_shelf"] = {"x": 9, "y": 8} 
+        self.positions["position_storage"] = {"x": 6, "y": 0}
+        self.positions["position_shelf"] = {"x": 0, "y": 8}
         self.positions["position_home"] = {"x": 0, "y": 0}
         self.storage_positions = {}
         self.first = False
@@ -56,7 +55,7 @@ class Manager:
                     event = self.event_queue.get(timeout=1)
                 except queue.Empty:
                     pass
-                    
+
                 self.interrupt_state = event == "interrupt"
                 self._new_event = False
                 if event is None or self.interrupt_state:
@@ -81,18 +80,18 @@ class Manager:
                             self.send_move()
                     self.mode.pop(-1)
                     event = self.mode[-1]
-                    
+
                 split_event = event.split(";")
                 method = getattr(self, split_event[0])
 
                 # Call the method with parameters if they exist
                 if len(split_event) > 1:
-                    #logger.info(
+                    # logger.info(
                     #    f"Executing {split_event[0]} with parameters: {split_event[1:]}"
-                    #)
+                    # )
                     output = method(*split_event[1:])
                 else:
-                    #logger.info(f"Executing {split_event[0]} with no parameters")
+                    # logger.info(f"Executing {split_event[0]} with no parameters")
                     output = method()
                 if output and self.job_done_queue.empty() and self.first:
                     self.first = False
@@ -100,11 +99,9 @@ class Manager:
                 if not self.event_queue.empty():
                     self.event_queue.task_done()
 
-            
             except Exception as e:
                 logger.error(f"Error processing event: {e}")
                 logger.exception("Full exception details:")
-
 
     def stop_event(self):
         response = requests.get(f"{get_settings().URL}/api/ros/sew_bot/pose")
@@ -119,31 +116,20 @@ class Manager:
         y = current_pose["transform"]["rotation"]["y"]
         x = current_pose["transform"]["rotation"]["x"]
 
-
-
         navigate_payload = {
-                    "pose": {
-                        "orientation": {
-                            "w": w,
-                            "x": x,
-                            "y": y,
-                            "z": z
-                        },
-                        "position": {
-                            "x": x_t,
-                            "y": y_t,
-                            "z": 0
-                        }
-                    }
-                }
+            "pose": {
+                "orientation": {"w": w, "x": x, "y": y, "z": z},
+                "position": {"x": x_t, "y": y_t, "z": 0},
+            }
+        }
 
         logger.info(f"Sending navigation command: {navigate_payload}")
-        
+
         _ = requests.post(
             f"{get_settings().URL}/api/ros/sew_bot/goal_pose",
             json=navigate_payload,
-            headers={"Content-Type": "application/json"}
-)
+            headers={"Content-Type": "application/json"},
+        )
 
     def resume_from_stop(self):
         self.event_queue.put("resume_from_stop")
@@ -152,10 +138,10 @@ class Manager:
     def work_mode(self):
         logger.info("Executing work_mode")
         self._new_event = True
-        if self.work_state:
+        if not self.work_state:
             change_mode = self.gotopoint("position_storage", "predefined")
         else:
-            change_mode = self.gotopoint("position_shelf","predefined")
+            change_mode = self.gotopoint("position_shelf", "predefined")
         if change_mode:
             self.work_state = not self.work_state
         return True
@@ -179,62 +165,51 @@ class Manager:
         current_pose = response.json()
         x = current_pose["transform"]["translation"]["x"]
         y = current_pose["transform"]["translation"]["y"]
-        return x, y 
+        return x, y
 
     def move(self, x, y):
         try:
             # Fetch the current pose from the API
             current_x, current_y = self.get_current_position()
             if self._new_event:
-                self.target_x = round(float(x) + current_x,1)
-                self.target_y = round(float(y) + current_y,1)
+                self.target_x = round(float(x) + current_x, 1)
+                self.target_y = round(float(y) + current_y, 1)
                 self.send_move()
 
-                
-            
-
             # Log the current and target positions
-            #logger.info(f"Current pose: x={current_x}, y={current_y}")
-            #logger.info(f"Target pose: x={self.target_x}, y={self.target_y}")
+            # logger.info(f"Current pose: x={current_x}, y={current_y}")
+            # logger.info(f"Target pose: x={self.target_x}, y={self.target_y}")
 
             # Calculate the differences
-            diff_x = ((current_x - self.target_x)**2)
-            diff_y = ((current_y - self.target_y)**2)
+            diff_x = (current_x - self.target_x) ** 2
+            diff_y = (current_y - self.target_y) ** 2
 
             # Check if the differences are within the threshold
             return math.sqrt(diff_x + diff_y) < 0.2
-               
+
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to fetch current pose: {e}")
             return False
         except KeyError as e:
             logger.error(f"Unexpected response format: {e}")
             return False
+
     def send_move(self):
         logger.info(f"Moving to target position: x={self.target_x}, y={self.target_y}")
-                
+
         navigate_payload = {
             "pose": {
-                "orientation": {
-                    "w": 1.0,
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                },
-                "position": {
-                    "x": self.target_x,
-                    "y": self.target_y,
-                    "z": 0
-                }
+                "orientation": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
+                "position": {"x": self.target_x, "y": self.target_y, "z": 0},
             }
         }
 
         logger.info(f"Sending navigation command: {navigate_payload}")
-        
+
         _ = requests.post(
             f"{get_settings().URL}/api/ros/sew_bot/goal_pose",
             json=navigate_payload,
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
 
     def gotopoint(self, location_name, location_type):
@@ -247,21 +222,21 @@ class Manager:
             current_x, current_y = self.get_current_position()
             target_x = position["x"]
             target_y = position["y"]
-            
-            return self.move(target_x- current_x, target_y- current_y)
+
+            return self.move(target_x - current_x, target_y - current_y)
         return self.move(0, 0)
 
     def sleep(self, seconds):
         seconds = float(seconds)
         if self._new_event:
             logger.info(f"Sleeping for {seconds} seconds")
-            self.target_time =  time.time() + seconds
+            self.target_time = time.time() + seconds
         return self.target_time < time.time()
 
     def save_position(self, location_name):
         logger.info(f"Saving position with name: {location_name}")
         x, y = self.get_current_position()
-        self.storage_positions[location_name] = { "x": x, "y": y }
+        self.storage_positions[location_name] = {"x": x, "y": y}
         return True
 
     def stop(self):
@@ -274,4 +249,3 @@ class Manager:
     def interrupt(self):
         self.interrupt_queue.put("interrupt")
         self.event_queue.put("interrupt")
-        

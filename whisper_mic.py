@@ -1,107 +1,118 @@
+import imp
+import re
 import sounddevice as sd
 import numpy as np
 import requests
 import sys
 import queue
+import time
 import whisper
 import pyttsx3
 
+# Initialize TTS engine
 engine = pyttsx3.init()
 
-# Parameters
+# Audio parameters
 samplerate = 16000
 channels = 1
-threshold = 0.0003  # Silence threshold (normalized)
-silence_duration = 2  # Seconds of silence before stopping
-chunk_duration = 0.5  # Duration of each read chunk in seconds
+threshold = 0.0003      # silence threshold
+silence_duration = 2    # seconds of silence before stopping
+chunk_duration = 0.5    # length of each audio chunk (s)
 
 # Load Whisper model
 print("Loading Whisper model (this might take a moment)...")
 model = whisper.load_model("base")
-print("Model loaded successfully!")
-print("Speak to start recording. Press Ctrl+C to stop.")
-
+print("Model loaded. Speak to start recording. Ctrl+C to stop.")
 
 def record_until_silence():
-    q_audio = queue.Queue()
-    frames = []
-    silence_chunk_count = 0
-    max_silent_chunks = int(silence_duration / chunk_duration)
+    """Record from mic until `silence_duration` seconds of silence."""
+    q_audio = queue.Queue()
+    frames = []
+    silence_count = 0
+    max_silent_chunks = int(silence_duration / chunk_duration)
 
-    def callback(indata, frames_, time, status):
-        volume_norm = np.linalg.norm(indata) / len(indata)
-        q_audio.put((indata.copy(), volume_norm))
+    def callback(indata, frames_, time, status):
+        volume = np.linalg.norm(indata) / len(indata)
+        q_audio.put((indata.copy(), volume))
 
-    with sd.InputStream(samplerate=samplerate, channels=channels, dtype='float32',
-                        blocksize=int(samplerate * chunk_duration), callback=callback):
-        print("Listening...")
-        while True:
-            data_chunk, volume = q_audio.get()
-            frames.append(data_chunk)
+    with sd.InputStream(samplerate=samplerate,
+                        channels=channels,
+                        dtype='float32',
+                        blocksize=int(samplerate * chunk_duration),
+                        callback=callback):
+        print("Listening…")
+        start = time.time() + 5
+        while True:
+            data, vol = q_audio.get()
+            frames.append(data)
+            print("AAA")
+            if start < time.time():
+                start = time.time() + 5
+                break
+            if vol < threshold :
+                silence_count += 1
+                if silence_count >= max_silent_chunks:
+                    print("Silence detected.")
+                    break
+            else:
+                silence_count = 0
 
-            if volume < threshold:
-                silence_chunk_count += 1
-                if silence_chunk_count >= max_silent_chunks:
-                    print("Silence detected. Stopping recording.")
-                    break
-            else:
-                silence_chunk_count = 0
+    if not frames:
+        return None
+    return np.concatenate(frames, axis=0).flatten()
 
-    audio_data = np.concatenate(frames, axis=0)
-    return audio_data.flatten()
+def get_speech_and_send():
+    """Record, transcribe, send transcription if any, and return text."""
+    try:
+        audio = record_until_silence()
+        if audio is None:
+            print("No audio captured.")
+            return ""
 
+        print("Transcribing…")
+        result = model.transcribe(audio, fp16=False)
+        text = result["text"].strip()
+        print("Transcription:", text)
 
-def get_speech():
-    try:
-        audio = record_until_silence()
+        if text:
+            try:
+                print("Sending to server…")
+                r = requests.post(
+                    "http://localhost:8000/command",
+                    json={"message": text},
+                    timeout=10
+                )
+                print(f"Server response: {r.status_code} – {r.text}")
+            except requests.exceptions.RequestException as e:
+                print("Failed to send:", e)
 
-        print("Transcribing...")
-        result = model.transcribe(audio, fp16=False)
-        transcription = result["text"]
-        print("Transcription:", transcription)
-        return transcription
+        return text
 
-        # # Send transcription
-        # try:
-        #     print(f"Attempting to send to http://192.168.1.104:8000/command...")
-        #     response = requests.post(
-        #         'http://192.168.1.104:8000/command',
-        #         json={"message": transcription},
-        #         timeout=1000
-        #     )
-        #     print(f"Response status: {response.status_code}")
-        #     print(f"Response content: {response.text}")
-        # except requests.exceptions.ConnectionError as e:
-        #     print("Connection Error: Could not connect to the server.")
-        #     print(f"Details: {str(e)}")
-        # except requests.exceptions.Timeout:
-        #     print("Timeout Error: Server took too long to respond.")
-        # except requests.exceptions.RequestException as e:
-        #     print(f"Request Error: {str(e)}")
-
-    except KeyboardInterrupt:
-        print("\nStopped.")
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        sys.exit(1)
-
+    except KeyboardInterrupt:
+        print("\nInterrupted by user.")
+        sys.exit(0)
+    except Exception as e:
+        print("Error during recording/transcription:", e)
+        sys.exit(1)
 
 def speak(text):
-    # Loop through voices to find a German voice
-    voices = engine.getProperty('voices')
-    for voice in voices:
-        if "german" in voice.name.lower() or "deutsch" in voice.name.lower():
-            engine.setProperty('voice', voice.id)
-            break
+    """Speak the text in German voice (if available)."""
+    if not text:
+        return
+    return
 
-    # Set properties for better voice quality
-    engine.setProperty('rate', 175) # Speed of speech
-    engine.setProperty('volume', 0.9) # Volume (0.0 to 1.0)
+    voices = engine.getProperty('voices')
+    for v in voices:
+        if "german" in v.name.lower() or "deutsch" in v.name.lower():
+            engine.setProperty('voice', v.id)
+            break
 
-    # Test speaking in German
-    engine.say(text)
-    engine.runAndWait()
+    engine.setProperty('rate', 175)
+    engine.setProperty('volume', 0.9)
+    engine.say(text)
+    engine.runAndWait()
 
-
-if __name__ == '__main__':
-    speak(get_speech())
+if __name__ == "__main__":
+    while True:
+        msg = get_speech_and_send()
+        speak(msg)

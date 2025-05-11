@@ -9,6 +9,7 @@ class Controller:
         """Activates the default working behavior"""
         self.manager.event_queue.put("work_mode")
         return self.manager.job_done_queue.get()
+
     def interrupt(self):
         self.manager.interrupt()
 
@@ -21,7 +22,6 @@ class Controller:
         """Stops the robot and maintains current position"""
         self.manager.event_queue.put("halt")
         return self.manager.job_done_queue.get()
-
 
     def move(self, x: float, y: float):
         """Moves the robot in X-Y coordinates"""
@@ -45,9 +45,10 @@ class Controller:
         event = f"wait_until"
         self.manager.event_queue.put(event)
         return self.manager.job_done_queue.get()
-    
+
     def stop_event(self):
         self.manager.event_queue.put("stop_event")
+
     def resume_from_stop(self):
         self.manager.resume_from_stop()
 
@@ -89,7 +90,6 @@ class Controller:
                 "parameters": {},
                 "description": "Stops the robot and maintains current position",
             },
-
             "move": {
                 "function": self.move,
                 "parameters": {
@@ -131,8 +131,7 @@ class Controller:
             },
             "wait_until": {
                 "function": self.wait_until,
-                "parameters": {
-                },
+                "parameters": {},
                 "description": "Makes the robot wait until a specified external interrupt.",
             },
             "save_position": {
