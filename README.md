@@ -1,10 +1,10 @@
-#  Docu For WALLE
+# Documentation for WALL-E
 
-![alt text](img/WALL_E.jpg)
+![WALL-E](img/WALL_E.jpg)
 
 ## Build Backend
 
-To build the FastAPI backend run
+To build the FastAPI backend, run the following commands:
 
 ```bash
 cd brain
@@ -14,7 +14,7 @@ pip install -e .
 touch .env
 ```
 
-Create a  **.env** file or set the parameters with export 
+Create a **.env** file or set the parameters using `export`:
 
 ```bash
 OPENAI_API_KEY=<YOUR-KEY-GOES-HERE>
@@ -22,22 +22,26 @@ OPENAI_MODEL=openai/gpt-4o
 MAX_TOKENS=10000
 ```
 
-Cool you have build and set up the Backend 🚀 .
+Great! You have successfully built and set up the backend 🚀.
 
-Now it is time to get some real work done !
+Now it’s time to get some real work done!
 
 > [!NOTE]  
-> If your robot is not using the IP **192.168.24.82** change it in the *brain/settings.py* accordingly
+> If your robot is not using the IP **192.168.24.82**, update it in the `brain/settings.py` file accordingly.
+
+---
 
 ## Start Backend
 
+Run the backend using one of the following commands:
+
 ```bash
 python run.py
-or
+# or
 uvicorn brain.routes:app --reload --log-level=critical --host=0.0.0.0 --reload
 ```
 
-something like this should come up 
+You should see output similar to this:
 
 ```bash
 2025-05-11 10:17:47.115 | INFO     | brain.manager:__init__:36 - Initializing Manager
@@ -47,17 +51,19 @@ something like this should come up
 2025-05-11 10:17:48.116 | INFO     | brain.manager:work_mode:153 - Executing work_mode
 ```
 
-get the API docu 
+Access the API documentation at:
 
 ```bash
 http://<YOUR-IP>:8000/docs
 ```
 
+---
+
 ## Send Data to Backend
 
-Use the web interface or simply curl.
+You can use the web interface or a `curl` command to send data to the backend.
 
-This is only useful if you want to send simple commands and get the interpreted by the AI model.
+This is useful if you want to send simple commands and have them interpreted by the AI model.
 
 ```bash
 curl -X 'POST' \
@@ -69,60 +75,64 @@ curl -X 'POST' \
 } '
 ```
 
-The robot fill perform a movement based on the interpretation.
+The robot will perform a movement based on the interpretation.
 
-We also have a 
+---
 
-**/stop** **/resume** and **/interrupt** command. They have no content.
+### Additional Commands
 
-### /stop 
+- **/stop**: Stops the robot immediately.
+- **/resume**: Resumes the movement to the last target position.
+- **/interrupt**: Currently not used.
 
-Will stop the robot on the spot
+---
 
-### /resume
+## Send Data to Backend Automatically
 
-Will resume the movement to the last target position
+So far, you’ve started the backend and sent REST API commands manually. But wouldn’t it be cooler to automate this process?
 
-### /interrupt
+Now, you can speak to the robot, and it will perform its movements automatically.
 
-Is not used
-
-## Send Data to Backend automatically
-
-Ok so far you started the Backend and have to send some REST API comannds yourself. But you want to be cooler right? Do also this step automatically, right?
-
-So you speek to the robot and it performes its movement automatically.
-
-cd into the main repo folder and install all requirements
+Navigate to the main repository folder and install all requirements:
 
 > [!NOTE]  
->  Install the camera driver to see the RGB Image from this image. [Link to Website](https://www.baumer.com/de/en/product-overview/industrial-cameras-image-processing/software/baumer-neoapi/c/42528)
+> Install the camera driver to see the RGB image. You can download the Baumer NeoAPI software [here](https://www.baumer.com/de/en/product-overview/industrial-cameras-image-processing/software/baumer-neoapi/c/42528).
 
 ```bash
 pip install -r gesture/requirements.txt
 pip install -r requirements.txt
 ```
 
-start the Camera
+---
+
+### Start the Camera
+
+Run the following command to start the camera:
 
 ```bash
 python gesture/gesture_recognition.py
 ```
 
-start voice recognition
+---
+
+### Start Voice Recognition
+
+Run the following command to start voice recognition:
 
 ```bash
 python gesture/whisper_mic.py
 ```
 
-the output should look smth like this if you are in front of the robot and do a stop gesture.
+When you are in front of the robot and perform a stop gesture, the output should look something like this:
 
-![alt text](img/stop.jpg)
+![Stop Gesture](img/stop.jpg)
 
-# Next steps
+---
 
-Try more things. You can also speak to the robot. For example, move two meters forward, and the robot will move. If you stop it with a gesture, it will pause and continue its movement when you step out of the way.
+# Next Steps
+
+Try more things! You can also speak to the robot. For example, say **move two meters forward**, and the robot will move. If you stop it with a gesture, it will pause and continue its movement when you step out of the way.
 
 Happy hacking! 😉
 
-![alt text](img/WALL_SEW.jpg)
+![WALL-E Sewing](img/WALL_SEW.jpg)
