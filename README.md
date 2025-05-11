@@ -85,10 +85,44 @@ Will resume the movement to the last target position
 
 ### /interrupt
 
-MAX?
+Is not used
 
 ## Send Data to Backend automatically
 
 Ok so far you started the Backend and have to send some REST API comannds yourself. But you want to be cooler right? Do also this step automatically, right?
 
 So you speek to the robot and it performes its movement automatically.
+
+cd into the main repo folder and install all requirements
+
+> [!NOTE]  
+>  Install the camera driver to see the RGB Image from this image. [Link to Website](https://www.baumer.com/de/en/product-overview/industrial-cameras-image-processing/software/baumer-neoapi/c/42528)
+
+```bash
+pip install -r gesture/requirements.txt
+pip install -r requirements.txt
+```
+
+start the Camera
+
+```bash
+python gesture/gesture_recognition.py
+```
+
+start voice recognition
+
+```bash
+python gesture/whisper_mic.py
+```
+
+the output should look smth like this if you are in front of the robot and do a stop gesture.
+
+![alt text](img/stop.jpg)
+
+# Next steps
+
+Try more things. You can also speak to the robot. For example, move two meters forward, and the robot will move. If you stop it with a gesture, it will pause and continue its movement when you step out of the way.
+
+Happy hacking! 😉
+
+![alt text](img/WALL_SEW.jpg)
