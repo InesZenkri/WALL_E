@@ -4,7 +4,7 @@
 
 ## Build Backend
 
-to build the FastAPI Backend run
+To build the FastAPI backend run
 
 ```bash
 cd brain
@@ -14,7 +14,7 @@ pip install -e .
 touch .env
 ```
 
-in the **.venv** file add the following things
+Create a  **.env** file or set the parameters with export 
 
 ```bash
 OPENAI_API_KEY=<YOUR-KEY-GOES-HERE>
@@ -32,6 +32,8 @@ Now it is time to get some real work done !
 ## Start Backend
 
 ```bash
+python run.py
+or
 uvicorn brain.routes:app --reload --log-level=critical --host=0.0.0.0 --reload
 ```
 
@@ -43,7 +45,6 @@ something like this should come up
 2025-05-11 10:17:47.115 | INFO     | brain.manager:__init__:45 - Manager daemon thread started
 2025-05-11 10:17:47.118 | INFO     | brain.fast_api:startup_event:31 - 🚀 FastAPI app is starting up...
 2025-05-11 10:17:48.116 | INFO     | brain.manager:work_mode:153 - Executing work_mode
-2025-05-11 10:17:48.116 | INFO     | brain.manager:gotopoint:242 - Going to point: position_shelf (type: predefined)
 ```
 
 get the API docu 
