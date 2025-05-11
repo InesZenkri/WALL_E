@@ -45,7 +45,6 @@ def record_until_silence():
         while True:
             data, vol = q_audio.get()
             frames.append(data)
-            print("AAA")
             if start < time.time():
                 start = time.time() + 5
                 break
