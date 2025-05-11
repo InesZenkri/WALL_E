@@ -113,6 +113,10 @@ Run the following command to start the camera:
 python gesture/gesture_recognition.py
 ```
 
+When you are in front of the robot and perform a stop gesture, the output should look something like this:
+
+![Stop Gesture](img/stop.jpg)
+
 ---
 
 ### Start Voice Recognition
@@ -122,10 +126,6 @@ Run the following command to start voice recognition:
 ```bash
 python gesture/whisper_mic.py
 ```
-
-When you are in front of the robot and perform a stop gesture, the output should look something like this:
-
-![Stop Gesture](img/stop.jpg)
 
 ---
 
