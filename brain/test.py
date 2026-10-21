@@ -1,12 +1,17 @@
+import os
+
 import requests
 
-url = "https://api.openai.com/v1/chat/completions"
+# Set OPENROUTER_API_KEY in your environment (see .env.example). Never commit the key.
+api_key = os.environ["OPENROUTER_API_KEY"]
+
+url = "https://openrouter.ai/api/v1/chat/completions"
 headers = {
-    "Authorization": "Bearer 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",
+    "Authorization": f"Bearer {api_key}",
     "Content-Type": "application/json",
 }
 data = {
-    "model": "gpt-3.5-turbo",
+    "model": "openai/gpt-3.5-turbo",
     "messages": [
         {"role": "user", "content": "Hello! Can you tell me a fun fact about space?"}
     ],
