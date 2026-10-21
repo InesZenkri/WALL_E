@@ -35,6 +35,50 @@ class Controller:
         self.manager.event_queue.put(event)
         return self.manager.job_done_queue.get()
 
+from brain.manager import Manager
+from brain.settings import get_settings
+
+
+class Controller:
+    def __init__(self):
+        self.manager = Manager()
+
+    def work_mode(self):
+        """Activates the default working behavior"""
+        self.manager.event_queue.put("work_mode")
+        return self.manager.job_done_queue.get()
+
+    def interrupt(self):
+        self.manager.interrupt()
+
+    def standby(self):
+        """Sets robot to standby mode"""
+        self.manager.event_queue.put("standby")
+        return self.manager.job_done_queue.get()
+
+    def halt(self):
+        """Stops the robot and maintains current position"""
+        self.manager.event_queue.put("halt")
+        return self.manager.job_done_queue.get()
+
+    def move(self, x: float, y: float):
+        """Moves the robot in X-Y coordinates"""
+        limit = get_settings().max_move_meters
+        if limit is not None and math.hypot(x, y) > limit:
+            return {
+                "status": False,
+                "error": f"Move of {math.hypot(x, y):.1f} m exceeds the limit of {limit} m",
+            }
+        event = f"move;{x};{y}"
+        self.manager.event_queue.put(event)
+        return self.manager.job_done_queue.get()
+
+    def gotopoint(self, location_name: str, location_type: str):
+        """Drives the robot to a specific location"""
+        event = f"gotopoint;{location_name};{location_type}"
+        self.manager.event_queue.put(event)
+        return self.manager.job_done_queue.get()
+
     def sleep(self, seconds: float):
         """Makes the robot wait"""
         event = f"sleep;{seconds}"
