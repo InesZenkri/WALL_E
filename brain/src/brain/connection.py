@@ -38,6 +38,43 @@ def connect_to_openai():
 
 def add_tool_message(
     tool_calls: List[Any],
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple
+from loguru import logger
+import openai
+from openai.types.chat import ChatCompletion
+
+from brain.settings import get_settings
+
+
+def connect_to_openai():
+    """
+    Connects to the OpenAI API and returns a simple response.
+    Uses settings from the environment variables via Pydantic.
+    """
+    settings = get_settings()
+
+    # Initialize the client with API key from settings
+    client = openai.OpenAI(
+        api_key=settings.openai_api_key.get_secret_value(),
+        base_url="https://openrouter.ai/api/v1",
+    )
+
+    # Make a simple request to the API
+    try:
+        response = client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "Hello, OpenAI!"},
+            ],
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error connecting to OpenAI: {str(e)}"
+
+
+def add_tool_message(
+    tool_calls: List[Any],
     tool_results: List[Dict[str, Any]],
     messages: List[Dict[str, Any]],
 ) -> None:
