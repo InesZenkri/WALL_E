@@ -1,9 +1,9 @@
-openai>=1.0.0
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-pydantic_settings
-fastapi
-uvicorn
-loguru
-python-dotenv
-requests
+# Versions this code was started and checked with (Python 3.10).
+openai==3.35.1
+python-dotenv==1.2.4
+pydantic==2.14.1
+pydantic-settings==2.15.0
+fastapi==0.156.8
+uvicorn==0.54.0
+loguru==0.7.3
+requests==2.34.2
