@@ -17,6 +17,29 @@ samplerate = 16000
 channels = 1
 threshold = 0.0003      # silence threshold
 silence_duration = 2    # seconds of silence before stopping
+import sounddevice as sd
+import numpy as np
+import requests
+import sys
+import queue
+import time
+import whisper
+import pyttsx3
+
+# Where the brain backend runs, and the optional API key (see BRAIN_API_KEY in the README).
+BRAIN_URL = os.environ.get("BRAIN_URL", "http://localhost:8000")
+HEADERS = (
+    {"X-API-Key": os.environ["BRAIN_API_KEY"]} if os.environ.get("BRAIN_API_KEY") else {}
+)
+
+# Initialize TTS engine
+engine = pyttsx3.init()
+
+# Audio parameters
+samplerate = 16000
+channels = 1
+threshold = 0.0003      # silence threshold
+silence_duration = 2    # seconds of silence before stopping
 chunk_duration = 0.5    # length of each audio chunk (s)
 
 # Load Whisper model
@@ -77,8 +100,9 @@ def get_speech_and_send():
             try:
                 print("Sending to server…")
                 r = requests.post(
-                    "http://localhost:8000/command",
+                    f"{BRAIN_URL}/command",
                     json={"message": text},
+                    headers=HEADERS,
                     timeout=10
                 )
                 print(f"Server response: {r.status_code} – {r.text}")
