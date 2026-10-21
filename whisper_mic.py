@@ -1,22 +1,4 @@
-import imp
-import re
-import sounddevice as sd
-import numpy as np
-import requests
-import sys
-import queue
-import time
-import whisper
-import pyttsx3
-
-# Initialize TTS engine
-engine = pyttsx3.init()
-
-# Audio parameters
-samplerate = 16000
-channels = 1
-threshold = 0.0003      # silence threshold
-silence_duration = 2    # seconds of silence before stopping
+import os
 import sounddevice as sd
 import numpy as np
 import requests
