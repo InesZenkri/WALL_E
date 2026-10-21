@@ -1,22 +1,14 @@
-from doctest import FAIL_FAST
+from fastapi import Depends
 from pydantic import BaseModel
 from brain.fast_api import app
+from brain.security import require_api_key
 from brain.controller import controller
 from collections import deque
 from brain.connection import call_with_tools, execute_tool_call
 from brain.tools.tools import tools
 from loguru import logger
 import asyncio
-#import pyttsx3
-#engine = pyttsx3.init()
-#voices = engine.getProperty('voices')
-#for voice in voices:
-#    if "german" in voice.name.lower() or "deutsch" in voice.name.lower():
-#        engine.setProperty('voice', voice.id)
-#        break
 
-#engine.setProperty('rate', 175)
-#engine.setProperty('volume', 0.9)
 
 class MessageRequest(BaseModel):
     message: str
@@ -26,19 +18,19 @@ messages = deque(maxlen=100)
 message_lock = asyncio.Lock()
 
 
-@app.post("/stop")
+@app.post("/stop", dependencies=[Depends(require_api_key)])
 async def stop():
     controller.stop_event()
     return "ok"
 
 
-@app.post("/resume")
+@app.post("/resume", dependencies=[Depends(require_api_key)])
 async def resume():
     controller.resume_from_stop()
     return "ok"
 
 
-@app.post("/command")
+@app.post("/command", dependencies=[Depends(require_api_key)])
 async def receive_message(request: MessageRequest):
     async with message_lock:
         loop = asyncio.get_event_loop()
@@ -70,8 +62,6 @@ def help_receive_message(request: MessageRequest):
             if not tool_result:
                 break
         
-#        engine.say(response.choices[0].message.content)
-#        engine.runAndWait()
         # Return the final response after all tool executions
         return {"message": response.choices[0].message.content}
 
@@ -79,7 +69,7 @@ def help_receive_message(request: MessageRequest):
         return {"error": f"Error processing message: {str(e)}"}
 
 
-@app.post("/interrupt")
+@app.post("/interrupt", dependencies=[Depends(require_api_key)])
 async def interrupt():
     controller.interrupt()
     return {"status": "resumed"}
