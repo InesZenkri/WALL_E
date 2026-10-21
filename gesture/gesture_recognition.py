@@ -1,4 +1,4 @@
-from doctest import FAIL_FAST
+import os
 import time
 from torchvision import transforms
 from PIL import Image
@@ -10,6 +10,12 @@ import torch
 import requests
 import sys
 import neoapi
+
+# Where the brain backend runs, and the optional API key (see BRAIN_API_KEY in the README).
+BRAIN_URL = os.environ.get("BRAIN_URL", "http://localhost:8000")
+HEADERS = (
+    {"X-API-Key": os.environ["BRAIN_API_KEY"]} if os.environ.get("BRAIN_API_KEY") else {}
+)
 
 
 class GestureRecognizer:
@@ -794,16 +800,16 @@ class GestureRecognizer:
         if self.epoch < time.time():
             # Send transcription as JSON with the correct format
             try:
-                print(f"Attempting to send to http://192.168.1.104:8000/{signal}...")
+                print(f"Attempting to send to {BRAIN_URL}/{signal}...")
                 response = requests.post(
-                    f"http://localhost:8000/{signal}", timeout=1000
+                    f"{BRAIN_URL}/{signal}", headers=HEADERS, timeout=1000
                 )
                 print(f"Response status: {response.status_code}")
                 print(f"Response content: {response.text}")
                 self.epoch = time.time() + 10
-            except requests.exceptio as e:
+            except requests.exceptions.ConnectionError as e:
                 print(
-                    f"Connection Error: Could not connect to the server. Please check if the server is running at 192.168.1.104:8000"
+                    f"Connection Error: Could not connect to the server. Please check if the server is running at {BRAIN_URL}"
                 )
                 print(f"Detailed error: {str(e)}")
             except requests.exceptions.Timeout as e:

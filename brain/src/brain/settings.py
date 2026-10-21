@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
@@ -22,6 +24,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
+
+    # Optional hardening, both off by default (behavior unchanged when unset).
+    # BRAIN_API_KEY: if set, /command, /stop, /resume and /interrupt require
+    #   the header "X-API-Key: <value>".
+    # MAX_MOVE_METERS: if set, the LLM "move" tool rejects moves longer than this.
+    brain_api_key: Optional[SecretStr] = None
+    max_move_meters: Optional[float] = Field(None, gt=0)
 
     URL: str = "http://192.168.24.82:8081"
 

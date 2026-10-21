@@ -1,8 +1,5 @@
-from doctest import FAIL_FAST, TestResults
-import re
 import threading
 import queue
-from collections import deque
 import time
 import requests
 from brain.settings import get_settings

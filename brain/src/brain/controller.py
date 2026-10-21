@@ -1,4 +1,7 @@
+import math
+
 from brain.manager import Manager
+from brain.settings import get_settings
 
 
 class Controller:
@@ -25,6 +28,12 @@ class Controller:
 
     def move(self, x: float, y: float):
         """Moves the robot in X-Y coordinates"""
+        limit = get_settings().max_move_meters
+        if limit is not None and math.hypot(x, y) > limit:
+            return {
+                "status": False,
+                "error": f"Move of {math.hypot(x, y):.1f} m exceeds the limit of {limit} m",
+            }
         event = f"move;{x};{y}"
         self.manager.event_queue.put(event)
         return self.manager.job_done_queue.get()
