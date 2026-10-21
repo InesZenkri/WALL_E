@@ -84,6 +84,88 @@ class Manager:
                 split_event = event.split(";")
                 method = getattr(self, split_event[0])
 
+import queue
+import time
+import requests
+from brain.settings import get_settings
+from loguru import logger
+import math
+
+# Configure loguru
+logger.add("manager.log", rotation="10 MB", level="DEBUG")
+
+
+class Manager:
+    def __init__(self):
+        # Create an event queue
+        self.event_queue = queue.Queue()
+        self.interrupt_queue = queue.Queue()
+        self.job_done_queue = queue.Queue()
+        self.interrupt_state = False
+        self.mode = []
+        self.mode.append("work_mode")
+        self.mode.append("work_mode")
+        self.mode.append("work_mode")
+        self.work_state = False
+        self.positions = {}
+        self.positions["position_storage"] = {"x": 6, "y": 0}
+        self.positions["position_shelf"] = {"x": 0, "y": 8}
+        self.positions["position_home"] = {"x": 0, "y": 0}
+        self.storage_positions = {}
+        self.first = False
+
+        logger.info("Initializing Manager")
+        logger.debug(f"Initial mode queue: {list(self.mode)}")
+
+        # Create and configure the daemon thread
+        self.thread = threading.Thread(target=self.loop, daemon=True)
+        self.running = True
+
+        # Start the daemon thread
+        self.thread.start()
+        logger.info("Manager daemon thread started")
+
+        self._new_event = False
+
+    def loop(self):
+        logger.info("Event loop started")
+        while self.running:
+            try:
+                # Get event from queue with timeout
+                event = None
+                try:
+                    event = self.event_queue.get(timeout=1)
+                except queue.Empty:
+                    pass
+
+                self.interrupt_state = event == "interrupt"
+                self._new_event = False
+                if event is None or self.interrupt_state:
+                    event = self.mode[-1]
+                    logger.debug(f"No event in queue, using default mode: {event}")
+                else:
+                    self.first = True
+                    self._new_event = True
+                    self.mode.append(event)
+                    self.mode = self.mode[-20:]
+                    logger.debug(f"New event appended to mode queue: {list(self.mode)}")
+                if event == "stop_event":
+                    if self._new_event:
+                        self.stop_event()
+                    if self.mode[-2] == "stop_event":
+                        self.mode.pop(-2)
+                    continue
+                if event == "resume_from_stop":
+                    if self.mode[-2] == "stop_event":
+                        self.mode.pop(-2)
+                        if self.mode[-2] == "move":
+                            self.send_move()
+                    self.mode.pop(-1)
+                    event = self.mode[-1]
+
+                split_event = event.split(";")
+                method = getattr(self, split_event[0])
+
                 # Call the method with parameters if they exist
                 if len(split_event) > 1:
                     # logger.info(
