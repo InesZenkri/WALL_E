@@ -387,6 +387,400 @@ class GestureRecognizer:
         knuckle_avg_z = (index_mcp[2] + pinky_mcp[2]) / 2
 
         # Determine if fingertips are further away than knuckles
+import time
+from torchvision import transforms
+from PIL import Image
+import cv2
+import mediapipe as mp
+import numpy as np
+from ultralytics import YOLO  # For pedestrian detection (YOLOv8)
+import torch
+import requests
+import sys
+import neoapi
+
+# Where the brain backend runs, and the optional API key (see BRAIN_API_KEY in the README).
+BRAIN_URL = os.environ.get("BRAIN_URL", "http://localhost:8000")
+HEADERS = (
+    {"X-API-Key": os.environ["BRAIN_API_KEY"]} if os.environ.get("BRAIN_API_KEY") else {}
+)
+
+
+class GestureRecognizer:
+    def __init__(self):
+        # flag for sending a stop command
+        self.flag = False
+
+        # Initialize MediaPipe Hands
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=2,
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.7,
+        )
+
+        # Initialize MediaPipe Pose
+        self.mp_pose = mp.solutions.pose
+        self.pose = self.mp_pose.Pose(
+            min_detection_confidence=0.7, min_tracking_confidence=0.7
+        )
+        self.epoch = time.time()
+
+        # Initialize drawing utilities
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
+
+        # Load YOLOv8 model for pedestrian detection
+        self.yolo_model = YOLO(
+            "yolo11m.pt"
+        )  # Use YOLOv8 nano for real-time performance
+        self.yolo_model.to("cuda")
+
+        # Load STOP sign image
+        self.stop_sign = cv2.imread("stop_sign.png", cv2.IMREAD_UNCHANGED)
+        # If stop sign image is not found, create a simple one
+        if self.stop_sign is None:
+            self.create_stop_sign()
+
+        # Track hand movement for "Come" gesture
+        self.prev_hand_positions = {}  # Dictionary to store previous hand positions
+        self.hand_movement_history = {}  # Dictionary to track movement direction
+        self.gesture_mode = (
+            {}
+        )  # Dictionary to track if a hand is in "Stop" or "Come" mode
+
+    def create_stop_sign(self):
+        """Create a simple STOP sign if image is not available"""
+        # Create a 200x200 transparent image
+        self.stop_sign = np.zeros((200, 200, 4), dtype=np.uint8)
+
+        # Draw a red octagon
+        center = (100, 100)
+        radius = 90
+        points = []
+        for i in range(8):
+            angle = i * (2 * np.pi / 8)
+            x = int(center[0] + radius * np.cos(angle))
+            y = int(center[1] + radius * np.sin(angle))
+            points.append([x, y])
+
+        points = np.array(points, dtype=np.int32)
+        cv2.fillPoly(
+            self.stop_sign, [points], (0, 0, 255, 220)
+        )  # Red with some transparency
+
+        # Add "STOP" text
+        cv2.putText(
+            self.stop_sign,
+            "STOP",
+            (40, 115),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.5,
+            (255, 255, 255, 255),  # White
+            3,
+            cv2.LINE_AA,
+        )
+
+    def detect_hand_movement(self, hand_id, hand_landmarks, frame_width, frame_height):
+        """
+        Detect if the hand is moving in a beckoning motion (for "Come" gesture)
+        or stationary (for "Stop" gesture).
+        """
+        # Get the center of the palm
+        palm_center_x = (
+            hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_MCP].x
+            * frame_width
+        )
+        palm_center_y = (
+            hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_MCP].y
+            * frame_height
+        )
+
+        current_position = (palm_center_x, palm_center_y)
+
+        # Initialize if this is a new hand
+        if hand_id not in self.prev_hand_positions:
+            self.prev_hand_positions[hand_id] = current_position
+            self.hand_movement_history[hand_id] = []
+            self.gesture_mode[hand_id] = "Stop"  # Default to Stop
+            return "Stop"
+
+        # Calculate movement
+        prev_x, prev_y = self.prev_hand_positions[hand_id]
+        dx = current_position[0] - prev_x
+        dy = current_position[1] - prev_y
+
+        # Update previous position
+        self.prev_hand_positions[hand_id] = current_position
+
+        # Determine movement direction (simplify to horizontal movement)
+        # Ignore small movements (noise)
+        movement_threshold = 5.0
+
+        if abs(dx) > movement_threshold:
+            # Record horizontal movement direction
+            direction = "right" if dx > 0 else "left"
+            self.hand_movement_history[hand_id].append(direction)
+
+            # Keep only the last 10 movements
+            if len(self.hand_movement_history[hand_id]) > 10:
+                self.hand_movement_history[hand_id].pop(0)
+
+            # Check for beckoning pattern (alternating left-right movements)
+            if len(self.hand_movement_history[hand_id]) >= 4:
+                # Check if there's a pattern of alternating directions
+                alternating = True
+                for i in range(1, len(self.hand_movement_history[hand_id])):
+                    if (
+                        self.hand_movement_history[hand_id][i]
+                        == self.hand_movement_history[hand_id][i - 1]
+                    ):
+                        alternating = False
+                        break
+
+                if alternating:
+                    self.gesture_mode[hand_id] = "Come"
+                    return "Come"
+
+        # If no significant movement or no beckoning pattern, use the current mode
+        return self.gesture_mode[hand_id]
+
+    def overlay_stop_sign(self, frame, hand_landmarks):
+        """Overlay a STOP sign on an open hand with robust error handling"""
+        try:
+            # Get the center of the palm
+            palm_center_x = int(
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_MCP].x
+                * frame.shape[1]
+            )
+            palm_center_y = int(
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_MCP].y
+                * frame.shape[0]
+            )
+
+            # Calculate the size of the stop sign based on hand size
+            wrist = hand_landmarks.landmark[self.mp_hands.HandLandmark.WRIST]
+            middle_tip = hand_landmarks.landmark[
+                self.mp_hands.HandLandmark.MIDDLE_FINGER_TIP
+            ]
+
+            # Calculate hand size
+            hand_height = abs(middle_tip.y - wrist.y) * frame.shape[0]
+            stop_size = int(
+                hand_height * 1.5
+            )  # Make stop sign proportional to hand size
+
+            if stop_size < 30:  # Minimum size
+                stop_size = 30
+
+            # Resize stop sign
+            resized_stop = cv2.resize(
+                self.stop_sign, (stop_size, stop_size), interpolation=cv2.INTER_AREA
+            )
+
+            # Calculate position to center the stop sign on the palm
+            x_offset = palm_center_x - stop_size // 2
+            y_offset = palm_center_y - stop_size // 2
+
+            # Ensure the stop sign stays within frame boundaries
+            x_offset = max(0, x_offset)
+            y_offset = max(0, y_offset)
+
+            # Calculate the actual width and height that will fit in the frame
+            actual_width = min(stop_size, frame.shape[1] - x_offset)
+            actual_height = min(stop_size, frame.shape[0] - y_offset)
+
+            # If the sign would be too small, don't overlay it
+            if actual_width <= 0 or actual_height <= 0:
+                return frame
+
+            # Crop the resized stop sign to fit within the frame
+            cropped_stop = resized_stop[:actual_height, :actual_width]
+
+            # Get the region of the frame where we'll overlay the sign
+            roi = frame[
+                y_offset : y_offset + actual_height, x_offset : x_offset + actual_width
+            ]
+
+            # Ensure ROI and cropped_stop have the same dimensions
+            if roi.shape[:2] != cropped_stop.shape[:2]:
+                # If they don't match, resize cropped_stop to match roi
+                cropped_stop = cv2.resize(
+                    cropped_stop,
+                    (roi.shape[1], roi.shape[0]),
+                    interpolation=cv2.INTER_AREA,
+                )
+
+            # Create a mask from the alpha channel
+            alpha_mask = cropped_stop[:, :, 3] / 255.0
+
+            # Apply the mask to each channel
+            for c in range(3):  # RGB channels
+                roi[:, :, c] = (
+                    roi[:, :, c] * (1 - alpha_mask) + cropped_stop[:, :, c] * alpha_mask
+                )
+
+            # Update the frame with the modified ROI
+            frame[
+                y_offset : y_offset + actual_height, x_offset : x_offset + actual_width
+            ] = roi
+
+            return frame
+        except Exception as e:
+            # If any error occurs, just return the original frame
+            print(f"Error in overlay_stop_sign: {e}")
+            return frame
+
+    def overlay_come_sign(self, frame, hand_landmarks):
+        """Overlay a COME sign on an open hand with robust error handling"""
+        try:
+            # Get the center of the palm
+            palm_center_x = int(
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_MCP].x
+                * frame.shape[1]
+            )
+            palm_center_y = int(
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_MCP].y
+                * frame.shape[0]
+            )
+
+            # Calculate the size of the come sign based on hand size
+            wrist = hand_landmarks.landmark[self.mp_hands.HandLandmark.WRIST]
+            middle_tip = hand_landmarks.landmark[
+                self.mp_hands.HandLandmark.MIDDLE_FINGER_TIP
+            ]
+
+            # Calculate hand size
+            hand_height = abs(middle_tip.y - wrist.y) * frame.shape[0]
+            come_size = int(
+                hand_height * 1.5
+            )  # Make come sign proportional to hand size
+
+            if come_size < 30:  # Minimum size
+                come_size = 30
+
+            # Resize come sign
+            resized_come = cv2.resize(
+                self.come_sign, (come_size, come_size), interpolation=cv2.INTER_AREA
+            )
+
+            # Calculate position to center the come sign on the palm
+            x_offset = palm_center_x - come_size // 2
+            y_offset = palm_center_y - come_size // 2
+
+            # Ensure the come sign stays within frame boundaries
+            x_offset = max(0, x_offset)
+            y_offset = max(0, y_offset)
+
+            # Calculate the actual width and height that will fit in the frame
+            actual_width = min(come_size, frame.shape[1] - x_offset)
+            actual_height = min(come_size, frame.shape[0] - y_offset)
+
+            # If the sign would be too small, don't overlay it
+            if actual_width <= 0 or actual_height <= 0:
+                return frame
+
+            # Crop the resized come sign to fit within the frame
+            cropped_come = resized_come[:actual_height, :actual_width]
+
+            # Get the region of the frame where we'll overlay the sign
+            roi = frame[
+                y_offset : y_offset + actual_height, x_offset : x_offset + actual_width
+            ]
+
+            # Ensure ROI and cropped_come have the same dimensions
+            if roi.shape[:2] != cropped_come.shape[:2]:
+                # If they don't match, resize cropped_come to match roi
+                cropped_come = cv2.resize(
+                    cropped_come,
+                    (roi.shape[1], roi.shape[0]),
+                    interpolation=cv2.INTER_AREA,
+                )
+
+            # Create a mask from the alpha channel
+            alpha_mask = cropped_come[:, :, 3] / 255.0
+
+            # Apply the mask to each channel
+            for c in range(3):  # RGB channels
+                roi[:, :, c] = (
+                    roi[:, :, c] * (1 - alpha_mask) + cropped_come[:, :, c] * alpha_mask
+                )
+
+            # Update the frame with the modified ROI
+            frame[
+                y_offset : y_offset + actual_height, x_offset : x_offset + actual_width
+            ] = roi
+
+            return frame
+        except Exception as e:
+            # If any error occurs, just return the original frame
+            print(f"Error in overlay_come_sign: {e}")
+            return frame
+
+    def calculate_palm_orientation(self, hand_landmarks, handedness):
+        """
+        Determine if the palm is facing the camera using multiple methods for robustness.
+        """
+        # Method 1: Cross product of vectors
+        # Get key landmarks
+        wrist = np.array(
+            [
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.WRIST].x,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.WRIST].y,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.WRIST].z,
+            ]
+        )
+
+        index_mcp = np.array(
+            [
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_MCP].x,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_MCP].y,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_MCP].z,
+            ]
+        )
+
+        pinky_mcp = np.array(
+            [
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.PINKY_MCP].x,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.PINKY_MCP].y,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.PINKY_MCP].z,
+            ]
+        )
+
+        # Calculate vectors
+        v1 = index_mcp - wrist
+        v2 = pinky_mcp - wrist
+
+        # Calculate cross product
+        cross_product = np.cross(v1, v2)
+
+        # Normalize the cross product
+        normal = cross_product / np.linalg.norm(cross_product)
+
+        # Method 2: Compare z-coordinates of knuckles vs fingertips
+        # This helps with back of hand detection
+        index_tip = np.array(
+            [
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_TIP].x,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_TIP].y,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_TIP].z,
+            ]
+        )
+
+        middle_tip = np.array(
+            [
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_TIP].x,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_TIP].y,
+                hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_TIP].z,
+            ]
+        )
+
+        # For back of hand, fingertips are typically further away (larger z) than knuckles
+        fingertip_avg_z = (index_tip[2] + middle_tip[2]) / 2
+        knuckle_avg_z = (index_mcp[2] + pinky_mcp[2]) / 2
+
+        # Determine if fingertips are further away than knuckles
         fingertips_further = fingertip_avg_z > knuckle_avg_z
 
         # Method 3: Check relative positions of thumb and pinky
@@ -794,16 +1188,16 @@ class GestureRecognizer:
         if self.epoch < time.time():
             # Send transcription as JSON with the correct format
             try:
-                print(f"Attempting to send to http://192.168.1.104:8000/{signal}...")
+                print(f"Attempting to send to {BRAIN_URL}/{signal}...")
                 response = requests.post(
-                    f"http://localhost:8000/{signal}", timeout=1000
+                    f"{BRAIN_URL}/{signal}", headers=HEADERS, timeout=1000
                 )
                 print(f"Response status: {response.status_code}")
                 print(f"Response content: {response.text}")
                 self.epoch = time.time() + 10
-            except requests.exceptio as e:
+            except requests.exceptions.ConnectionError as e:
                 print(
-                    f"Connection Error: Could not connect to the server. Please check if the server is running at 192.168.1.104:8000"
+                    f"Connection Error: Could not connect to the server. Please check if the server is running at {BRAIN_URL}"
                 )
                 print(f"Detailed error: {str(e)}")
             except requests.exceptions.Timeout as e:
