@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from loguru import logger
 import sys
@@ -20,15 +22,15 @@ logging.basicConfig(handlers=[InterceptHandler()], level=0)
 logger.remove()  # Remove default stderr
 logger.add(sys.stderr, level="INFO")  # You can write to file too
 
-# Import your tool call logic
-from brain.connection import call_with_tools, execute_tool_call
-
-app = FastAPI()
 
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
     logger.info("🚀 FastAPI app is starting up...")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/")
